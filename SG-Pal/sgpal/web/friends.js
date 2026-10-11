@@ -15,6 +15,6 @@ async function list(){const token=++generation,data=await api();if(!dialog.open|
 }
 function close(){generation++;content.replaceChildren();dialog.close();SGPal.live()}
 $('friends-close').onclick=close;dialog.addEventListener('cancel',e=>{e.preventDefault();close()});dialog.addEventListener('keydown',e=>e.stopPropagation());
-function open(){if(!dialog.open)dialog.showModal();content.replaceChildren();if(!window.SGPalAccount?.session?.signed_in){message.textContent='Sign in using Save my progress to use friends. Email login requires the Supabase setup in ACCOUNTS.md.';return}if(SGPal.inspect().gallery||!SGPal.inspect().backend){message.textContent='Return to your live Pal before opening friends.';return}content.append(button('Refresh',list));run(list)}
+function open(){if(!dialog.open)dialog.showModal();content.replaceChildren();if(!window.SGPalAccount?.session?.signed_in){message.textContent='Open the profile menu and choose Save my Pal to use friends. Keep your recovery code private.';return}if(SGPal.inspect().gallery||!SGPal.inspect().backend){message.textContent='Return to your live Pal before opening friends.';return}content.append(button('Refresh',list));run(list)}
 $('friends-open')?.addEventListener('click',open);window.SGPalFriends={open};
 })();

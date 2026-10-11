@@ -38,7 +38,7 @@ window.addEventListener('keydown',e=>{
  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'].includes(e.key))return;
  if(e.key==='Escape'){
   e.preventDefault();e.stopImmediatePropagation();
-  if(modal){if(modal.id==='friends-dialog')$('friends-close').click();else modal.close()}
+  if(modal){if(modal.id==='friends-dialog')$('friends-close').click();else if(modal.id==='account-dialog')$('account-close').click();else modal.close()}
   else if(!$('visit-banner').hidden){SGPal.live();restoreToolbar()}
   else if(previous!=='04'){actions.back();if(previous==='04')restoreToolbar()}
   else $('settings-open').click();return;
@@ -103,7 +103,7 @@ window.SGPalBrowser={render(data,controls){
  const actionBox=$('game-actions');actionBox.replaceChildren();
  choices.forEach((choice,i)=>{
   if(data.body&&['Read','Next'].includes(choice.label))return; // Browser text scrolls in full.
-  const b=node('button',choice.label);b.type='button';b.setAttribute('aria-label',choice.label);b.dataset.action=String(i);b.disabled=!!choice.disabled;b.classList.toggle('selected',i===data.focus);b.classList.toggle('quiet',['Back','Home','Next','Prev','Retry'].includes(choice.label));
+  const label=screen==='01'&&choice.label==='Start'?'Play now':choice.label;const b=node('button',label);b.type='button';b.setAttribute('aria-label',label);b.dataset.action=String(i);b.disabled=!!choice.disabled;b.classList.toggle('selected',i===data.focus);b.classList.toggle('quiet',['Back','Home','Next','Prev','Retry'].includes(choice.label));
   if(screen==='02'&&['merlion','otter','mynah'].includes(choice.label)){b.prepend(picture(choice.label,'choice-pal'));b.classList.add('pet-choice')}
   b.onclick=()=>controls.activate(i);
   b.onkeydown=e=>{if(['ArrowLeft','ArrowUp','ArrowRight','ArrowDown'].includes(e.key)){e.preventDefault();const visible=[...actionBox.children].map(el=>Number(el.dataset.action)),at=visible.indexOf(i),step=['ArrowLeft','ArrowUp'].includes(e.key)?-1:1;controls.select(visible[(at+step+visible.length)%visible.length]);actionBox.querySelector('[data-action="'+visible[(at+step+visible.length)%visible.length]+'"]').focus()}else if(e.key==='Escape'){e.preventDefault();controls.back()}};

@@ -1,3 +1,5 @@
+> **Current online MVP:** use [Render deployment and recovery accounts](DEPLOY_RENDER.md). No Supabase or SMTP is needed. Older email setup below is legacy reference.
+
 # SG Pal · Kopi Sunset browser integration
 
 The approved 320 × 240 browser experience is now in `sgpal/web/`, served by

@@ -1,4 +1,4 @@
-"""Opaque browser sessions + Supabase-managed email authentication.
+"""Opaque browser sessions, private recovery codes and legacy email authentication.
 
 No provider tokens or credentials are returned to browsers. Per-player stores
 remain authoritative on one persistent FastAPI host; there is no client balance sync.
@@ -77,6 +77,8 @@ class Sessions:
             db.execute('CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, owner TEXT NOT NULL, subject TEXT, email TEXT, csrf TEXT NOT NULL, expires REAL NOT NULL, pending_email TEXT, deadline REAL, verified_subject TEXT, verified_email TEXT)')
             db.execute('CREATE TABLE IF NOT EXISTS accounts (subject TEXT PRIMARY KEY, owner TEXT NOT NULL UNIQUE, email TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, next REAL NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS recovery (hash TEXT PRIMARY KEY, owner TEXT NOT NULL UNIQUE, subject TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS recovery_limits (key TEXT PRIMARY KEY, failures INTEGER NOT NULL, reset REAL NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS claims (hash TEXT PRIMARY KEY, owner TEXT NOT NULL)')
 
     @contextmanager
@@ -148,9 +150,55 @@ class Sessions:
             db.execute('DELETE FROM sessions WHERE hash=?',(row['hash'],))
             return self.issue(db,account['owner'],account['subject'],account['email'])
 
+    def unsaved_progress(self, row):
+        folder=self.root/'players'/row['owner']
+        return not row['subject'] and any((folder/name).exists() for name in ('profile.json','gameplay.sqlite3','progress.json'))
+
+    def save_recovery(self):
+        # A random 256-bit bearer credential needs no password stretching. Only
+        # its SHA-256 digest is persisted; it never appears in URLs or logs.
+        code='SGP-'+secrets.token_hex(32)
+        with self.db() as db:
+            row=self.row(db)
+            if db.execute('SELECT 1 FROM recovery WHERE owner=?',(row['owner'],)).fetchone():
+                raise HTTPException(409,'Recovery access already exists. The private code cannot be shown again. Keep this browser signed in if you lost it.')
+            subject=row['subject'] or 'recovery:'+row['owner']
+            if not row['subject']:
+                db.execute('INSERT INTO accounts VALUES(?,?,?)',(subject,row['owner'],''))
+            db.execute('INSERT INTO recovery VALUES(?,?,?)',(digest(code),row['owner'],subject))
+            db.execute('UPDATE sessions SET subject=? WHERE hash=?',(subject,row['hash']))
+        return code
+
+    def restore(self, code, ip):
+        now=time.time()
+        error=None;token=None
+        with self.db() as db:
+            row=self.row(db)
+            keys=[('restore-session:'+row['hash'],5),('restore-ip:'+digest(ip),60)]
+            for key,maximum in keys:
+                limit=db.execute('SELECT * FROM recovery_limits WHERE key=?',(key,)).fetchone()
+                if limit and limit['reset']>now and limit['failures']>=maximum:
+                    raise HTTPException(429,'Too many failed attempts. Wait 15 minutes before trying again.')
+            found=db.execute('SELECT * FROM recovery WHERE hash=?',(digest(code.strip()),)).fetchone()
+            if not found:
+                for key,_ in keys:
+                    db.execute('INSERT INTO recovery_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET failures=CASE WHEN reset>? THEN failures+1 ELSE 1 END, reset=CASE WHEN reset>? THEN reset ELSE excluded.reset END',(key,now+900,now,now))
+                error=HTTPException(401,'Recovery code not recognised. Check your private code; public friend codes cannot restore a Pal.')
+            elif self.unsaved_progress(row):
+                error=HTTPException(409,'Save my Pal first to keep this guest progress, or cancel and keep playing. Saves and coins are never combined.')
+            else:
+                account=db.execute('SELECT * FROM accounts WHERE owner=?',(found['owner'],)).fetchone()
+                db.execute('DELETE FROM sessions WHERE hash=?',(row['hash'],))
+                token=self.issue(db,found['owner'],found['subject'],account['email'])
+        # Raise after commit so failed guesses remain rate-limited across restarts.
+        if error:raise error
+        return token
+
     def logout(self):
         with self.db() as db:
-            row=self.row(db);db.execute('DELETE FROM sessions WHERE hash=?',(row['hash'],))
+            row=self.row(db)
+            if self.unsaved_progress(row):raise HTTPException(409,'Save my Pal before leaving this guest, or cancel.')
+            db.execute('DELETE FROM sessions WHERE hash=?',(row['hash'],))
             return self.issue(db)
 
     def claim(self,token):
@@ -186,11 +234,28 @@ def router(root):
         model_config=ConfigDict(extra='forbid')
         key:str=Field(min_length=32,max_length=128)
 
+    class RecoveryBody(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        code:str=Field(min_length=1,max_length=200)
+
+    @api.post('/recovery/save')
+    def save_recovery():
+        return {'code':Sessions(root()).save_recovery()}
+
+    @api.post('/recovery/restore')
+    def restore(body:RecoveryBody,request:Request,response:Response):
+        token=Sessions(root()).restore(body.code,request.client.host if request.client else 'unknown')
+        cookie(response,token,request)
+        return {'restored':True}
+
     @api.get('/session')
     def session():
         row=CURRENT.get()
+        store=Sessions(root())
+        with store.db() as db:
+            recovery=bool(db.execute('SELECT 1 FROM recovery WHERE owner=?',(row['owner'],)).fetchone())
         return {'owner_id':row['owner'],'csrf':row['csrf'],'signed_in':bool(row['subject']),'email':row['email'],
-                'configured':provider.ready,'conflict':bool(row['verified_subject']),'pending_email':row['pending_email']}
+                'recovery_enabled':recovery,'unsaved_progress':store.unsaved_progress(row),'configured':provider.ready,'conflict':bool(row['verified_subject']),'pending_email':row['pending_email']}
 
     @api.post('/email')
     def email(body:EmailBody,request:Request):
