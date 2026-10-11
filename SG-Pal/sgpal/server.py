@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from core import CULTURE, BY_ID, atomic_json, api_key, normalise, recognise
 from sgpal.gameplay import GameStore, GameError, legacy_progress
+from sgpal.commerce import ITEMS, SLOTS
 
 ROOT = Path(__file__).parent
 DATA = Path(os.environ.get("SGPAL_DATA_DIR", Path.home() / ".local/share/sgpal"))
@@ -72,7 +73,7 @@ def read_state():
             "level": 1 + progress["xp"] // 50,
             "discoveries": list(progress["log"]), "log": progress["log"],
             "quests": list(progress["log"]), "completed": progress["completed"],
-            "active": progress["active"], "quest_details": progress.get("quest_details", {}), "inventory": [], "room": {}}
+            "active": progress["active"], "quest_details": progress.get("quest_details", {}), "inventory": progress.get("inventory", []), "room": progress.get("room", {})}
 
 
 def save_profile(profile):
@@ -108,6 +109,11 @@ def status():
 @app.get("/api/catalogue")
 def catalogue():
     return CULTURE
+
+
+@app.get('/api/shop')
+def shop():
+    return {'items': ITEMS, 'slots': SLOTS}
 
 
 @app.get("/api/state")
@@ -247,7 +253,7 @@ def correct(body: CorrectionBody):
 def retry(body: OperationBody):
     store = game_store()
     prior = store.operation(str(body.operation_id))
-    if prior['kind'] == 'complete':
+    if prior['kind'] in ('complete', 'purchase', 'place'):
         return {**prior, 'state': read_state()}
     if prior['kind'] == 'verify':
         if prior['status'] in ('verified', 'duplicate'):
@@ -279,6 +285,26 @@ def activate(body: QuestBody):
 @app.post('/api/quests/answer')
 def answer_quest(body: QuestAnswerBody):
     outcome = game_store().answer_quest(str(body.operation_id), body.culture_id, body.done)
+    return {**outcome, 'state': read_state()}
+
+
+class PurchaseBody(OperationBody):
+    item_id: str
+
+
+class PlacementBody(PurchaseBody):
+    slot_id: str
+
+
+@app.post('/api/shop/purchase')
+def purchase(body: PurchaseBody):
+    outcome = game_store().commerce(str(body.operation_id), 'purchase', body.item_id)
+    return {**outcome, 'state': read_state()}
+
+
+@app.post('/api/room/place')
+def place(body: PlacementBody):
+    outcome = game_store().commerce(str(body.operation_id), 'place', body.item_id, body.slot_id)
     return {**outcome, 'state': read_state()}
 
 

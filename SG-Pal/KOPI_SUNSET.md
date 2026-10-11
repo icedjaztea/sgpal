@@ -50,6 +50,43 @@ return; seven existing catalogue IDs remain supported so old saves are valid.
 Activities are short, respectful and do not require purchases or photographing
 people. Follow signs and ask for help when needed.
 
+## Browser reward-to-decoration loop
+
+After earning coins, open Menu → Shop. Browse with Next and choose Buy to preview
+the price, current balance and item; Back cancels without changing progress.
+Confirm submits the purchase to the backend. Each decoration can be owned once.
+
+| Decoration | Kopi Coins | Art |
+| --- | ---: | --- |
+| Window plant | 8 | Reused approved plant primitive |
+| Kopi cup | 5 | Simple palette-matched placeholder icon |
+| Tile display | 12 | Shophouse-inspired placeholder tile icon |
+
+A discovery and self-reported quest earn 15 coins, enough for the plant and cup.
+Prices and compatibility come from `sgpal/commerce.py`. The browser cannot submit
+a price, balance or ownership grant. SQLite commits the debit, ownership and
+operation result together. Concurrent attempts cannot overdraw or charge twice;
+an already-owned item costs nothing. Culture XP is never debited. Insufficient
+funds produce a clear result without a charge; after earning more, make a new
+purchase from the shop rather than replaying that old insufficient-funds result.
+
+Open Items/Inventory, choose an owned decoration, then preview the Window or Door
+slot with Next. Save places it; Back cancels. Menu → Decorate offers the same owned
+item choices. Moving one item clears its previous slot. Replacing another item
+keeps both owned. No sales, refunds, multiple copies or drag-and-drop are included.
+The base room artwork is unchanged; some furniture in that background is baked
+into the approved image and is not an inventory item.
+
+Purchase/placement requests use durable operation IDs and share Status/Retry with
+gameplay. Lost responses and reloads reconcile the original operation; replaying
+an old placement cannot undo a later placement. New backend tables migrate from
+schema 1/2 without resetting progress. Preview and sample gallery actions never
+write purchases or room state. All new controls use the shared rotary/keyboard/
+touch action path and fit the existing native 320 × 240 canvas.
+
+This stage is browser-only. No Pi connections, GPIO configuration, driver
+installation or kiosk-service changes were made. Auth and friends remain deferred.
+
 ## Recognition, rewards and failures
 
 `core.recognise` reuses the configured `gpt-4.1-mini` Responses API with image
@@ -77,7 +114,7 @@ entry point also uses an explicit honesty answer instead of photo verification.
 Camera permission denial/device absence offers Upload, Retry and Back. Failed AI
 and save requests show a retry/status screen. Unknown recognition does not become
 a discovery. Failed photo loading leaves navigation available. Auth, friends,
-shop spending and cloud sync remain deferred.
+cloud sync and social features remain deferred.
 
 ## Credentials and photo privacy
 
@@ -110,7 +147,8 @@ keep the demo local or on a trusted network. This is not an authenticated servic
 - `profile.json` retains adoption/name/species/sound.
 - Original `progress.json` is imported once and preserved byte-for-byte.
 - `gameplay.sqlite3` owns current progress, photos and durable operations. Schema
-  2 adds quest answers while preserving schema-1 balances/photos/completions.
+  2 adds quest answers; schema 3 adds inventory, room slots and durable purchase/
+  placement operations. Both migrations preserve balances, photos and completions.
 - Legacy XP is retained, with no retroactive coin awards. Historical entries with
   no stored photograph are explicitly labelled. Demo progress is never imported.
 
@@ -175,3 +213,12 @@ Kopi terminology follows [Singapore Tourism Board's kopi guide](https://www.visi
 Tray-return guidance follows [NEA's Clean Tables campaign](https://www.nea.gov.sg/our-services/public-cleanliness/clean-tables).
 Chope is presented as a contextual practice, never inferred confidently from an
 isolated tissue packet. These short activities avoid claims about every Singaporean.
+
+Shop-stage validation: 62 backend tests pass, including earned-coin purchases,
+insufficient funds, forged prices, concurrent duplicates, competing purchases,
+rollback, ownership/slot validation, idempotent placement and schema-2 migration.
+The complete browser test extends the labelled AI fixture through cancellation,
+lost purchase response/reload, touch placement, insufficient funds, replacement
+and saved room reload. Existing onboarding/mobile/gallery checks also pass.
+No new live AI test was needed for this stage: recognition code is unchanged,
+and test coins come from discovery/quest transactions with injected recognition.

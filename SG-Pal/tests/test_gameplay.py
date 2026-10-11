@@ -349,7 +349,8 @@ def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
     store.finish(oid,lease,result('kopi',verified=True))  # Historical schema-1 record, not a live route.
     before=c.get('/api/state').json()
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
-        db.execute('DROP TABLE quest_answers')
+        for table in ('room','inventory','commerce_operations','quest_answers'):
+            db.execute('DROP TABLE '+table)
         db.execute("UPDATE meta SET value='1' WHERE key='version'")
     after=c.get('/api/state').json()
     assert after==before
@@ -357,7 +358,7 @@ def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
     assert c.get(after['log']['kopi']['photo_url']).status_code==200
     assert c.post('/api/quests/answer',json=answer()).json()['reward']=={'xp':0,'coins':0}
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
-        assert db.execute("SELECT value FROM meta WHERE key='version'").fetchone()[0]=='2'
+        assert db.execute("SELECT value FROM meta WHERE key='version'").fetchone()[0]=='3'
 
 
 def test_discovery_photo_not_publicly_cached_or_embeddable(game):

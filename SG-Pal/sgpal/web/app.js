@@ -13,6 +13,7 @@ let hits=[],focus=0,current='01',gallery=false,backend=false,ready=false,stream=
 let candidate='merlion',nameIndex=0,lastCameraError='Camera unavailable.';
 const names={merlion:['Kopi','Splash','Bubbles'],otter:['Kaya','Pebble','Puddle'],mynah:['Pip','Chirpy','Milo']};
 const empty=()=>({version:1,adopted:false,species:'merlion',name:'Kopi',xp:0,coins:0,discoveries:[],quests:[],inventory:[],room:{},sound:false});
+let shopItems=[],roomSlots=[],shopIndex=0,slotIndex=0,selectedDecor=null;
 let saved=empty(),catalogue=[],menuPage=0,dexPage=0,questPage=0,detailPage=0,selectedEntry=null,saving=false;
 const browserStorage=new URLSearchParams(location.search).get('storage')==='browser';
 backend=!browserStorage;
@@ -35,7 +36,13 @@ function button(label,x,y,w,h,fn,{disabled=false}={}){const i=hits.length,sel=i=
 function rail(options){const gap=4,w=Math.floor((304-gap*(options.length-1))/options.length);options.forEach((o,i)=>button(o[0],8+i*(w+gap),194,w,28,o[1]));}
 function row(label,y,fn,sub){button(label,12,y,296,30,fn);if(sub)text(sub,18,y+33,C.wood)}
 function sprite(species,x,y,size=64){const a=assets[species];if(a){const r=Math.min(size/a.width,size/a.height);const w=Math.round(a.width*r),h=Math.round(a.height*r);ctx.drawImage(a,x+Math.floor((size-w)/2),y+Math.floor((size-h)/2),w,h)}}
-function room(pal=true){ctx.drawImage(assets.room,0,24,320,168);if(pal)sprite(state().species,147,112,56)}
+function room(pal=true,arrangement=gallery?{}:saved.room){ctx.drawImage(assets.room,0,24,320,168);for(const [slotId,itemId] of Object.entries(arrangement||{})){const slot=roomSlots.find(s=>s.id===slotId),item=shopItems.find(i=>i.id===itemId);if(slot&&item)decoration(item.art,slot.x,slot.y)}if(pal)sprite(state().species,147,112,56)}
+// Plant reuses approved primitive art. Cup/tile are simple palette-matched placeholders.
+function decoration(art,x,y){
+ if(art==='plant'){symbol('plant',x,y);return}
+ if(art==='cup'){frame(x+1,y+15,28,25,C.cream);frame(x+27,y+20,9,13,C.cream);rect(x+29,y+23,4,7,C.wood);rect(x+4,y+18,22,5,C.wood);rect(x-2,y+43,38,4,C.paper);return}
+ frame(x,y+7,34,34,C.cream);frame(x+4,y+11,26,26,C.jade);rect(x+13,y+14,8,20,C.terra);rect(x+7,y+20,20,8,C.terra);rect(x+13,y+20,8,8,C.gold);rect(x+6,y+44,24,4,C.wood);
+}
 function symbol(type,x,y){if(type==='coin'){frame(x+2,y,12,16,C.gold);rect(x,y+3,16,10,C.gold);rect(x+6,y+4,3,8,C.wood)}else if(type==='xp'){rect(x+6,y,4,16,C.cream);rect(x,y+6,16,4,C.cream)}else if(type==='lock'){frame(x+4,y,10,9,C.paper);frame(x,y+7,18,13,C.muted);rect(x+8,y+11,2,5,C.ink)}else if(type==='tissue'){frame(x,y+12,64,28,C.jade);rect(x+24,y+5,22,16,C.cream);rect(x+30,y,12,8,C.cream);rect(x+6,y+28,52,3,C.paper)}else if(type==='plant'){rect(x+14,y+12,4,23,C.wood);rect(x+2,y+8,15,10,C.jade);rect(x+17,y,16,13,C.jade);frame(x+4,y+32,28,21,C.terra)}}
 function placeholderPhoto(x=20,y=40,w=280,h=116){frame(x,y,w,h,C.ink,C.wood);text('PHOTO AREA',x+Math.floor((w-118)/2),y+20,C.paper);text('NO SAMPLE PHOTO',x+Math.floor((w-178)/2),y+47,C.paper)}
 function register(id,title,phase,draw,meta){screens[id]={id,title,phase,draw,...meta};}
@@ -183,7 +190,7 @@ register('live-quest-answer','Honesty-based quest answer',1,()=>{
  row('Not yet',136,()=>answerQuest(false));
  rail([['Back',()=>nav('live-quest')]]);
 },{});
-for(const id of ['13','13slot','13confirm'])liveView(id,()=>{base('DECORATE');lines(['YOUR INVENTORY IS EMPTY.','COLLECT FURNITURE FIRST.','DECORATING COMES LATER.'],16,61);rail([['Inventory',()=>nav('12')],['Back',()=>nav('04menu')]])});
+
 liveView('14more',()=>{base('ABOUT YOUR PAL');const personality={merlion:'CURIOUS AND BRAVE',otter:'PLAYFUL AND SOCIABLE',mynah:'BRIGHT AND CHATTY'};lines([personality[saved.species],'ACCESSORY: NONE','ACHIEVEMENTS: NONE','NO DAILY CARE REQUIRED.'],10,44);rail([['Back',()=>nav('14')]])});
 
 // Real game requests. Gallery never reaches these paths. Only the server can
@@ -192,7 +199,7 @@ let photoPayload=null,activeRequest=null,gameResult=null,gameMessage='',gameBusy
 const pendingKey='sgpal-pending-operation-v1';
 const newId=()=>crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
 function startScan(){photo=null;photoPayload=null;activeRequest=null;nav('05')}
-function rememberRequest(){try{localStorage.setItem(pendingKey,JSON.stringify({id:activeRequest.body.operation_id,path:activeRequest.path,...(activeRequest.path==='quests/answer'?{body:activeRequest.body}:{})}))}catch(_){}}
+function rememberRequest(){try{localStorage.setItem(pendingKey,JSON.stringify({id:activeRequest.body.operation_id,path:activeRequest.path,...(['quests/answer','shop/purchase','room/place'].includes(activeRequest.path)?{body:activeRequest.body}:{})}))}catch(_){}}
 function forgetRequest(){try{localStorage.removeItem(pendingKey)}catch(_){}}
 function acceptResult(result){
  if(result.state)saved=result.state;gameResult=result;
@@ -206,6 +213,7 @@ function acceptResult(result){
  }
  if(result.status==='failed'){gameMessage=result.message||'Request failed. No rewards added.';nav('live-request-error');return}
  forgetRequest();
+ if(['purchase','place'].includes(result.kind)){selectedDecor=shopItems.find(i=>i.id===result.item_id);nav('live-commerce-result');return}
  if(result.status==='not_done'){nav('live-quest');return}
  if(['confirmed','verified','completed','duplicate'].includes(result.status))nav('live-reward');
  else nav('live-uncertain');
@@ -227,7 +235,7 @@ async function retryRequest(){
  if(activeRequest){await runGameRequest();return}
  let pending;try{pending=JSON.parse(localStorage.getItem(pendingKey))}catch(_){}
  if(!pending){startScan();return}
- activeRequest=pending.path==='quests/answer'&&pending.body?{path:pending.path,body:pending.body}:{path:'retry',body:{operation_id:pending.id}};await runGameRequest();
+ activeRequest=['quests/answer','shop/purchase','room/place'].includes(pending.path)&&pending.body?{path:pending.path,body:pending.body}:{path:'retry',body:{operation_id:pending.id}};await runGameRequest();
 }
 async function checkRequest(){
  if(gameBusy)return;let pending;
@@ -255,7 +263,7 @@ async function resumeRequest(){
  let pending;try{pending=JSON.parse(localStorage.getItem(pendingKey))}catch(_){}
  if(!pending)return false;
  try{const result=await api('operations/'+pending.id);acceptResult(result);return true}
- catch(e){if(e.status===404&&pending.path!=='quests/answer'){forgetRequest();return false}gameMessage=e.message;nav('live-request-error');return true}
+ catch(e){if(e.status===404&&!['quests/answer','shop/purchase','room/place'].includes(pending.path)){forgetRequest();return false}gameMessage=e.message;nav('live-request-error');return true}
 }
 function showStoredPhoto(url){
  storedPhoto=null;nav('live-photo');const im=new Image();
@@ -283,7 +291,7 @@ liveView('05',()=>{
  rail([['Camera',camera],['Upload',choosePhoto],['Back',goHome]]);
 });
 liveView('05photo',()=>{base('REVIEW PHOTO');picture();text('ANALYSE SENDS TO OPENAI',16,169);rail([['Analyse',analysePhoto],['Retry',()=>startScan()],['Back',()=>nav('05')]])});
-register('live-working','Saving or checking',1,()=>{const answering=activeRequest?.path==='quests/answer';base(answering?'SAVING YOUR ANSWER':'CHECKING PHOTO');sprite(saved.species,120,32,80);lines([answering?'WAITING FOR SAVE.':'WAITING FOR AI RESPONSE.','NO REWARD CONFIRMED.','BACK KEEPS REQUEST ID.'],16,121);rail([['Back',closeRequest]])},{});
+register('live-working','Saving or checking',1,()=>{const answering=['quests/answer','shop/purchase','room/place'].includes(activeRequest?.path);base(answering?'SAVING YOUR CHOICE':'CHECKING PHOTO');sprite(saved.species,120,32,80);lines([answering?'WAITING FOR SAVE.':'WAITING FOR AI RESPONSE.','NO REWARD CONFIRMED.','BACK KEEPS REQUEST ID.'],16,121);rail([['Back',closeRequest]])},{});
 register('live-candidate','Confirm culture suggestion',1,()=>{
  gameRead('IS THIS RIGHT?',(selectedEntry?.title||'Unknown')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
 },{});
@@ -310,7 +318,55 @@ register('live-photo','Your saved photograph',1,()=>{
  if(record)text(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(record.time*1000)).replace(',','')+' SGT',10,167);
  rail([['Back',()=>nav('live-info')]]);
 },{});
-liveView('11',()=>{base('KOPI SHOP',String(saved.coins));symbol('plant',140,43);lines(['YOUR COINS ARE SAVED.','SHOP OPENS IN A LATER','UPDATE. KEEP EXPLORING!'],16,111);rail([['Back',()=>nav('04menu')]])});
+liveView('11',()=>{
+ const item=shopItems[shopIndex%shopItems.length];if(!item){base('KOPI SHOP');lines(['SHOP NEEDS THE SERVER.'],16,70);rail([['Back',()=>nav('04menu')]]);return}
+ base('KOPI SHOP',String(saved.coins));decoration(item.art,30,48);
+ text(item.title.toUpperCase(),82,43);text(item.price+' COINS',82,72);
+ const owned=saved.inventory.includes(item.id);
+ text(owned?'ALREADY OWNED':saved.coins<item.price?'NEED '+(item.price-saved.coins)+' MORE COINS':'YOU CAN AFFORD THIS.',16,108);
+ lines(wrapWords(item.description).slice(0,2),16,138);
+ rail([[owned?'Owned':'Buy',()=>{selectedDecor=item;nav(owned?'12':'11confirm')}],['Next',()=>{shopIndex=(shopIndex+1)%shopItems.length;nav('11')}],['Back',()=>nav('04menu')]]);
+});
+liveView('11confirm',()=>{
+ if(!selectedDecor){nav('11');return}
+ base('CONFIRM PURCHASE');decoration(selectedDecor.art,140,30);
+ lines([selectedDecor.title.toUpperCase(),'PRICE: '+selectedDecor.price+' COINS','YOUR COINS: '+saved.coins],16,95);
+ rail([['Confirm',purchaseDecor],['Back',()=>nav('11')]]);
+});
+function inventoryView(title){
+ base(title);
+ const items=shopItems.filter(i=>saved.inventory.includes(i.id));
+ if(!items.length){lines(['NO DECORATIONS YET.','VISIT THE KOPI SHOP.'],16,65);rail([['Shop',()=>nav('11')],['Back',()=>nav('04menu')]]);return}
+ items.forEach((item,i)=>row(item.title,36+i*40,()=>{selectedDecor=item;slotIndex=0;nav('live-placement')}));
+ rail([['Shop',()=>nav('11')],['Back',()=>nav('04menu')]]);
+}
+liveView('12',()=>inventoryView('YOUR INVENTORY'));
+liveView('13',()=>inventoryView('CHOOSE DECORATION'));
+register('live-placement','Preview room placement',2,()=>{
+ const item=selectedDecor,slots=roomSlots.filter(s=>item?.slots.includes(s.id)),slot=slots[slotIndex%slots.length];
+ if(!item||!slot){nav('12');return}
+ const preview={...saved.room};for(const id of Object.keys(preview))if(preview[id]===item.id)delete preview[id];preview[slot.id]=item.id;
+ base('PREVIEW ONLY');room(false,preview);ctx.strokeStyle=C.terra;ctx.lineWidth=2;ctx.strokeRect(slot.x-5,slot.y-3,46,59);
+ frame(8,151,304,38,C.paper);text(slot.title.toUpperCase()+' SLOT',16,158);text(saved.room[slot.id]&&saved.room[slot.id]!==item.id?'BOTH ITEMS STAY OWNED':'SAVE TO KEEP THIS HERE',16,174);
+ rail([['Save',placeDecor],['Next',()=>{slotIndex=(slotIndex+1)%slots.length;render()}],['Back',()=>nav('12')]]);
+},{});
+async function purchaseDecor(){
+ if(gallery||gameBusy||!selectedDecor)return;
+ activeRequest={path:'shop/purchase',body:{operation_id:newId(),item_id:selectedDecor.id}};await runGameRequest();
+}
+async function placeDecor(){
+ if(gallery||gameBusy||!selectedDecor)return;
+ const slots=roomSlots.filter(s=>selectedDecor.slots.includes(s.id));
+ activeRequest={path:'room/place',body:{operation_id:newId(),item_id:selectedDecor.id,slot_id:slots[slotIndex%slots.length].id}};await runGameRequest();
+}
+register('live-commerce-result','Decoration saved result',2,()=>{
+ const status=gameResult.status;
+ base({purchased:'PURCHASE SAVED!',owned:'ALREADY OWNED',insufficient:'NOT ENOUGH COINS',placed:'ROOM SAVED!'}[status]||'SAVED');
+ if(selectedDecor)decoration(selectedDecor.art,140,34);
+ lines([selectedDecor?.title.toUpperCase()||'DECORATION',status==='insufficient'?'NEED '+gameResult.needed+' MORE COINS':status==='purchased'?'PAID '+gameResult.charged+' KOPI COINS':status==='owned'?'NO EXTRA CHARGE.':'ITEMS STAY IN INVENTORY.','YOUR COINS: '+saved.coins],16,105);
+ rail([['Items',()=>nav('12')],['Shop',()=>nav('11')],['Home',goHome]]);
+},{});
+
 liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS SAVE ON THIS','DEVICE. NO CLOUD SYNC.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
 
 function render(){if(!ready)return;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');}
@@ -329,7 +385,7 @@ setInterval(()=>{if(ready&&stream&&current==='05live'&&!document.hidden)render()
 window.SGPal={rotate,press,back,preview(id){if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
 async function loadSaved(){
  try{
-  if(backend){saved=await api('state');catalogue=await api('catalogue')}
+  if(backend){saved=await api('state');catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}
   else{const raw=localStorage.getItem('sgpal-ui-v1');saved=raw?{...empty(),...JSON.parse(raw)}:empty();if(!names[saved.species]||typeof saved.adopted!=='boolean')throw Error('Invalid save')}
   if(!(saved.adopted&&await resumeRequest()))nav(saved.adopted?'04':'01');
  }catch(e){nav('saveerror')}

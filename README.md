@@ -28,8 +28,8 @@ Working: three-Pal adoption, suggested names, BTO, shared controls, persisted
 reload, real recognition/correction, confirmed CultureDex discoveries with saved
 photos and Singapore timestamps, separate XP/coins and exactly-once rewards.
 Quests now use the requested “Yes, I did it” / “Not yet” choice, explicitly player-reported.
-The labelled design gallery is isolated from actual progress. Auth, friends and
-shop spending remain deferred. Raw SPI/GPIO/CSI integration with the new renderer
+The labelled design gallery is isolated from actual progress. A three-item shop, inventory and two room slots now spend earned Kopi Coins;
+Culture XP is never spent. Auth and friends remain deferred. Raw SPI/GPIO/CSI integration with the new renderer
 and physical Pi/iPhone validation remain pending.
 
 ## Validate
