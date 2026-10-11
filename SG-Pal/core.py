@@ -111,7 +111,9 @@ def parse_response(response):
     if not isinstance(result.get('observation'), str): raise ValueError('Invalid observation.')
     if 'singapore_context' in result:
         if not isinstance(result['singapore_context'],str): raise ValueError('Invalid local context.')
-        result['observation'] = result['observation'][:250] + ' Singapore connection: ' + result['singapore_context'][:220]
+        def short(text, limit):
+            return text if len(text)<=limit else text[:limit-1].rsplit(' ',1)[0]+'…'
+        result['observation'] = short(result['observation'],250) + ' Singapore connection: ' + short(result['singapore_context'],220)
     return result
 
 
