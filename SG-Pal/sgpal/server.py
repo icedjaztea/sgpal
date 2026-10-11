@@ -85,7 +85,7 @@ def read_state():
     result = {**profile.model_dump(), "xp": progress["xp"], "coins": progress.get("coins", 0),
             "level": 1 + progress["xp"] // 50,
             "local_finds": progress.get("local_finds", []), "discoveries": list(progress["log"]), "log": progress["log"],
-            "quests": list(progress["log"]), "completed": progress["completed"],
+            "quests": list(BY_ID), "completed": progress["completed"],
             "active": progress["active"], "quest_details": progress.get("quest_details", {}), "inventory": progress.get("inventory", []), "room": progress.get("room", {})}
     result['revision']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()
     identity=accounts.CURRENT.get()

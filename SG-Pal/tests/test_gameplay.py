@@ -308,11 +308,11 @@ def test_quest_done_not_yet_and_reload_without_ai(game,monkeypatch):
 
 def test_quest_answer_validation_and_identity_conflict(game):
     c,_=game
-    assert c.post('/api/quests/answer',json=answer()).status_code==409
+    assert c.post('/api/quests/answer',json=answer(done=False)).status_code==200
     assert c.post('/api/quests/answer',json=answer('invented')).status_code==422
     assert c.post('/api/quests/answer',json=answer(done='false')).status_code==422
     scan=c.post('/api/scan',json=body()).json()
-    assert c.post('/api/quests/answer',json=answer()).status_code==409
+    assert c.post('/api/quests/answer',json=answer(done=False)).status_code==200
     c.post('/api/confirm',json={'operation_id':scan['operation_id']})
     assert c.post('/api/quests/answer',json=answer(oid=scan['operation_id'])).status_code==409
     request=answer(done=False);c.post('/api/quests/answer',json=request)
@@ -359,7 +359,7 @@ def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
     assert c.get(after['log']['kopi']['photo_url']).status_code==200
     assert c.post('/api/quests/answer',json=answer()).json()['reward']=={'xp':0,'coins':0}
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
-        assert db.execute("SELECT value FROM meta WHERE key='version'").fetchone()[0]=='3'
+        assert db.execute("SELECT value FROM meta WHERE key='version'").fetchone()[0]=='4'
 
 
 def test_discovery_photo_not_publicly_cached_or_embeddable(game):
@@ -431,7 +431,7 @@ def test_local_find_rewards_once_and_persists(game, monkeypatch):
     state=c.get('/api/state').json()
     assert state['coins']==8 and state['xp']==10
     assert state['local_finds'][0]['item_key']=='electric-fan'
-    assert not state['quests']
+    assert len(state['quests'])==10
 
 
 @pytest.mark.parametrize('fields', [dict(confidence='low'),dict(singapore_related=False),dict(discovery_key='../invalid'),dict(discovery_title='')])
@@ -457,3 +457,24 @@ def test_scan_coin_once_per_completed_request_and_no_failure_bonus(game,monkeypa
     monkeypatch.setattr(server,'recognise',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('AI unavailable')))
     assert c.post('/api/scan',json=body('blue')).status_code>=400
     assert c.get('/api/state').json()['coins']==2
+
+
+def test_all_ten_quests_without_scans_once_and_reload(game):
+    c,path=game
+    items=c.get('/api/catalogue').json()
+    # Catalogue endpoint returns its curated entries.
+    from core import BY_ID
+    assert len(BY_ID)==10 and len(c.get('/api/state').json()['quests'])==10
+    for cid in BY_ID:
+        assert c.post('/api/quests/answer',json=answer(cid,done=False)).json()['status']=='not_done'
+        done=c.post('/api/quests/answer',json=answer(cid)).json()
+        assert done['reward']=={'xp':25,'coins':10}
+        assert c.post('/api/quests/answer',json=answer(cid)).json()['reward']=={'xp':0,'coins':0}
+    state=c.get('/api/state').json()
+    assert state['xp']==250 and state['coins']==100 and len(state['completed'])==10
+    assert state['discoveries']==[]
+    assert GameStore(path).state()['coins']==100
+    assert all(q['completion_method']=='self_reported' for q in state['quest_details'].values())
+    # Discovering a culture afterwards must not reset its completed quest.
+    discover(c)
+    assert c.post('/api/quests/answer',json=answer()).json()['reward']=={'xp':0,'coins':0}

@@ -77,7 +77,7 @@ class GameStore:
             db.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             version = db.execute("SELECT value FROM meta WHERE key='version'").fetchone()
             if version:
-                if version['value'] not in ('1', '2', '3'):
+                if version['value'] not in ('1', '2', '3', '4'):
                     raise GameError(503, 'Unsupported gameplay save version. Save preserved.')
                 snapshot = db.execute("SELECT value FROM meta WHERE key='legacy_snapshot'").fetchone()
                 if snapshot and json.loads(snapshot['value']) != legacy_progress(self.directory):
@@ -86,6 +86,8 @@ class GameStore:
                     self.migrate_quest_answers(db)
                 if version['value'] in ('1', '2'):
                     self.migrate_commerce(db)
+                if version['value'] != '4':
+                    self.migrate_open_quests(db)
                 return
             old = legacy_progress(self.directory)
             statements = [
@@ -109,6 +111,7 @@ class GameStore:
             db.execute("INSERT INTO meta VALUES('version','1')")
             self.migrate_quest_answers(db)
             self.migrate_commerce(db)
+            self.migrate_open_quests(db)
 
     @staticmethod
     def migrate_quest_answers(db):
@@ -122,6 +125,20 @@ class GameStore:
         db.execute('CREATE TABLE room (slot_id TEXT PRIMARY KEY, item_id TEXT NOT NULL UNIQUE REFERENCES inventory(item_id))')
         db.execute('CREATE TABLE commerce_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, result TEXT NOT NULL)')
         db.execute("UPDATE meta SET value='3' WHERE key='version'")
+
+    @staticmethod
+    def migrate_open_quests(db):
+        # Preserve completions and answer identities while removing scan prerequisite.
+        db.execute('CREATE TABLE quests_v4 (culture_id TEXT PRIMARY KEY, completed INTEGER NOT NULL DEFAULT 0, evidence_id TEXT REFERENCES photos(id), completed_sgt TEXT)')
+        db.execute('INSERT INTO quests_v4 SELECT * FROM quests')
+        db.execute('CREATE TABLE quest_answers_v4 (id TEXT PRIMARY KEY, culture_id TEXT NOT NULL REFERENCES quests_v4(culture_id), done INTEGER NOT NULL, result TEXT NOT NULL)')
+        db.execute('INSERT INTO quest_answers_v4 SELECT * FROM quest_answers')
+        db.execute('DROP TABLE quest_answers')
+        db.execute('DROP TABLE quests')
+        db.execute('ALTER TABLE quests_v4 RENAME TO quests')
+        db.execute('ALTER TABLE quest_answers_v4 RENAME TO quest_answers')
+        for cid in BY_ID:db.execute('INSERT OR IGNORE INTO quests(culture_id) VALUES(?)',(cid,))
+        db.execute("UPDATE meta SET value='4' WHERE key='version'")
 
     def commerce(self, oid, kind, item_id, slot_id=None):
         if kind not in ('purchase', 'place') or item_id not in BY_ITEM:
@@ -358,8 +375,8 @@ class GameStore:
             status = 'confirmed' if fresh else 'duplicate'
             payload['reward'] = {'xp': DISCOVERY_XP if fresh else 0, 'coins': DISCOVERY_COINS if fresh else 0}
             if fresh:
-                db.execute('INSERT INTO quests(culture_id) VALUES(?)', (cid,))
-                db.execute('UPDATE wallet SET active=? WHERE id=1', (cid,))
+                db.execute('INSERT OR IGNORE INTO quests(culture_id) VALUES(?)', (cid,))
+                db.execute('UPDATE wallet SET active=CASE WHEN (SELECT completed FROM quests WHERE culture_id=?)=0 THEN ? ELSE active END WHERE id=1', (cid,cid))
                 self.reward(db, 'discovery:'+cid, DISCOVERY_XP, DISCOVERY_COINS)
             db.execute('UPDATE operations SET status=?,result=? WHERE id=?', (status, json.dumps(payload), oid))
             return {**payload, 'operation_id': oid, 'status': status, 'kind': 'scan'}
