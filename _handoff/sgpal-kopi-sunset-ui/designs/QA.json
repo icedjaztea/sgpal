@@ -1,0 +1,15 @@
+{
+  "screens": 57,
+  "errors": [],
+  "audit": [],
+  "checks": [
+    "57 screens render",
+    "sample/live state isolation",
+    "rotary onboarding",
+    "server persistence on reload",
+    "photo selection",
+    "AI-unconnected no rewards",
+    "mobile viewport",
+    "320x240 kiosk"
+  ]
+}

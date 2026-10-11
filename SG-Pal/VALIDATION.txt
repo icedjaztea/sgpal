@@ -1,3 +1,28 @@
+HONESTY-BASED HACKATHON UPDATE:
+54 backend tests cover schema/catalogue checks, correction disagreement, no reward
+on uncertainty/failure, once-only discovery and self-reported quest completion,
+Not yet, concurrency, retries, old saves and retired evidence-photo endpoints.
+Browser tests cover the complete flow, exact Yes, I did it / Not yet choices,
+injected AI failure, retry after reload, lost responses, mobile/kiosk layouts,
+shared input and isolation of gallery/demo data.
+Live recognition was tested separately on a synthetic kopi menu with temporary
+progress. No quest AI call or hardware validation is claimed.
+The history below documents earlier builds, including superseded photo checks.
+
+SHARED REPOSITORY UPDATE 2026-10-11:
+PASS: 51 backend/domain tests, including the original six; v1 -> v2 migration,
+Done/Not yet, concurrency, failed-save rollback, reward deduplication and photos.
+PASS: browser onboarding for all species, shared input, persisted reload, nine
+menus, 57 isolated gallery states, 320-1100px widths and exact 320x240 kiosk.
+PASS: full browser discovery/correction, saved photo, Not yet, Done, failed
+request across reload and lost-response reconciliation (labelled injected AI).
+PASS: live OpenAI recognition of a synthetic kopi-O menu in isolated progress,
+confirmed discovery and player-reported Done flow. Exactly 35 XP and 15 coins.
+No real camera accuracy claim; no AI quest verification required in current UI.
+Original local folder and save retained; shared origin/main and hardware retained.
+
+Earlier implementation and original hardware validation history follows:
+
 Validation performed 2026-10-11 in build environment:
 PASS: six unittest cases (persistence/reward deduplication, image normalisation,
 response validation, low-confidence no reward, quest result handling,
@@ -7,7 +32,14 @@ PASS: local HTTP HTML response, PNG screen delivery, valid action submission,
 and rejection of a cross-origin POST.
 PASS: Python compile checks and bash syntax checks.
 PASS: visual inspection of home, discovery, quest, log, creature and busy screens.
-NOT RUN: live OpenAI request; no secret was supplied to this environment.
+UPDATE 2026-10-11: 46 automated tests passed for the integrated browser/backend.
+PASS: live OpenAI recognition and quest verification using synthetic menu images,
+temporary progress, saved photographs and Singapore timestamps; exactly 35 XP and
+15 coins across two reward events; replay and new-operation duplicate claims
+granted no additional rewards. Unknown sample could not be confirmed or rewarded.
+Fixed missing macOS Python HTTPS roots using Certifi; TLS verification stays on.
+Existing credential reused securely; no key created and user progress untouched.
+NOT RUN: live real-world camera-photo accuracy. See KOPI_SUNSET.md for full scope.
 NOT RUN: real Pi installation, LCD, CSI camera, encoder/buttons, touch,
 buzzer, WS2812 ring, service boot, hotspot/SSH or powerbank validation.
 See README.md acceptance checklist before presenting a hardware demo.

@@ -1,0 +1,24 @@
+name: SG Pal tests
+on:
+  push:
+    branches: [main, feat/sgpal-kopi-sunset]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    name: Backend Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.13']
+    defaults:
+      run:
+        working-directory: SG-Pal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-web.txt 'pytest>=8,<10' 'httpx>=0.28,<1'
+      - run: python -m pytest tests -q

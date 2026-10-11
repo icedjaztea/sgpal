@@ -1,5 +1,6 @@
 """SG Pal domain logic. No hardware imports; shared by preview and Pi."""
-import base64, hashlib, io, json, os, tempfile, time
+import base64, hashlib, io, json, os, ssl, tempfile, time
+import certifi
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -26,6 +27,7 @@ def atomic_json(path, data):
 def normalise(raw):
     if len(raw) > 6 * 1024 * 1024: raise ValueError('Photo too large. Use a JPEG under 6 MB.')
     with Image.open(io.BytesIO(raw)) as src:
+        if src.format not in ('JPEG', 'PNG', 'WEBP'): raise ValueError('Use a JPEG, PNG or WebP photo.')
         if src.width * src.height > 24000000: raise ValueError('Use a photo under 24 megapixels.')
         im = ImageOps.exif_transpose(src).convert('RGB')
         im.thumbnail((1280, 1280))
@@ -69,10 +71,30 @@ class Store:
         self.data['active'] = None; self.save(); return True
 
 
+    def finish_self_reported(self, cid):
+        if cid not in BY_ID or self.data['active'] != cid or cid in self.data['completed']:
+            return False
+        from copy import deepcopy
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        updated = deepcopy(self.data)
+        updated['completed'].append(cid)
+        updated['xp'] += 25
+        updated['active'] = None
+        updated.setdefault('quest_completions', {})[cid] = {
+            'method': 'self_reported',
+            'completed_sgt': datetime.now(ZoneInfo('Asia/Singapore')).isoformat(timespec='seconds')}
+        atomic_json(self.path, updated)
+        self.data = updated
+        return True
+
+
 def api_key():
     value = os.environ.get('OPENAI_API_KEY', '').strip()
     path = Path(os.environ.get('SGPAL_KEY_FILE', str(Path.home() / '.config/sgpal/credentials.json')))
-    if not value and path.exists(): value = json.loads(path.read_text()).get('OPENAI_API_KEY', '')
+    if not value and path.exists():
+        try: value = json.loads(path.read_text()).get('OPENAI_API_KEY', '').strip()
+        except (ValueError, OSError, AttributeError): raise RuntimeError('Credential file cannot be read. Run python configure_key.py.') from None
     if not value: raise RuntimeError('No API key. Run: python configure_key.py')
     return value
 
@@ -90,8 +112,10 @@ def parse_response(response):
     return result
 
 
-def recognise(photo, quest=None):
+def recognise(photo, quest=None, correction=None):
     """One bounded HTTPS request per deliberate confirmation; never auto retries."""
+    if quest is not None:
+        raise RuntimeError('Quest photo checks are retired. Complete quests with your own answer.')
     schema = {'type': 'object', 'additionalProperties': False,
               'properties': {'culture_id': {'type': 'string', 'enum': [*BY_ID, 'unknown']},
                              'confidence': {'type': 'string', 'enum': ['high', 'medium', 'low']},
@@ -103,10 +127,11 @@ def recognise(photo, quest=None):
                     'high-confidence chope. Return unknown/low for ambiguous or irrelevant photos. '
                     'Observation: plain English, at most 24 words, evidence only. Confidence is your '
                     'self-assessment, not a calibrated probability. Never invent text you cannot read. '
-                    'For discovery set verified false. For a quest, verified true ONLY when the new '
-                    'photo clearly meets the supplied visible criterion, with high confidence. '
+                    'Set verified false: this request identifies a discovery, never quest completion. '
                     'Do not claim a photo proves actions, location, time, or ownership beyond what is visible.')
-    context = {'categories': CULTURE, 'quest_to_verify': quest}
+    instructions += (' A user correction is a suggestion, not evidence. Independently assess it; do not agree unless visible evidence supports it.')
+    context = {'categories': [{k: c[k] for k in ('id', 'title', 'fact')} for c in CULTURE],
+               'suggested_correction': {k: correction[k] for k in ('id', 'title', 'fact')} if correction else None}
     payload = {'model': CONFIG['model'], 'store': False, 'max_output_tokens': 500,
                'instructions': instructions,
                'input': [{'role': 'user', 'content': [
@@ -115,8 +140,12 @@ def recognise(photo, quest=None):
                'text': {'format': {'type': 'json_schema', 'name': 'culture_scan', 'strict': True, 'schema': schema}}}
     req = Request('https://api.openai.com/v1/responses', data=json.dumps(payload).encode(),
                   headers={'Authorization': 'Bearer ' + api_key(), 'Content-Type': 'application/json'})
+    # Keep system/custom roots and add a bundled public CA set for Python
+    # installations whose default certificate file is missing (notably macOS).
+    tls = ssl.create_default_context()
+    tls.load_verify_locations(cafile=certifi.where())
     try:
-        with urlopen(req, timeout=35) as res: return parse_response(json.load(res))
+        with urlopen(req, timeout=35, context=tls) as res: return parse_response(json.load(res))
     except HTTPError as exc:
         messages = {401: 'API key rejected. Re-run configure_key.py.', 403: 'API project lacks access.',
                     404: 'Model unavailable. Check model in config.json.',

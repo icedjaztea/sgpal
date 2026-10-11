@@ -26,13 +26,15 @@ class Tests(unittest.TestCase):
    a=App(data_dir=folder); a.photo=b'test'
    a.handle('recognised',{'culture_id':'chope','confidence':'low','verified':False,'observation':'Unclear'})
    self.assertEqual(a.store.data['xp'],0); self.assertIsNone(a.cid)
- def test_quest_failure_and_success(self):
+ def test_quest_is_self_reported_and_not_yet_keeps_it_active(self):
   with tempfile.TemporaryDirectory() as folder:
-   a=App(data_dir=folder); a.store.discover('chope','old'); a.store.activate('chope')
-   a.quest_mode=True; a.photo=b'new'
-   obj={'culture_id':'chope','confidence':'low','verified':True,'observation':'Unclear'}
-   a.handle('recognised',obj); self.assertEqual(a.store.data['xp'],10)
-   obj['confidence']='high'; a.handle('recognised',obj); self.assertEqual(a.store.data['xp'],35)
+   a=App(data_dir=folder);a.store.discover('chope','old');a.store.activate('chope')
+   a.set_screen('quest');a.handle('select');self.assertEqual(a.screen,'quest_answer')
+   a.handle('next');a.handle('select');self.assertEqual(a.store.data['xp'],10)
+   self.assertEqual(a.store.data['active'],'chope')
+   a.handle('select');a.handle('select');self.assertEqual(a.store.data['xp'],35)
+   self.assertEqual(a.store.data['quest_completions']['chope']['method'],'self_reported')
+   self.assertFalse(a.store.finish_self_reported('chope'))
  def test_demo_isolation_and_all_screens(self):
   with tempfile.TemporaryDirectory() as folder:
    live=App(data_dir=folder); demo=App(demo=True,data_dir=folder)
