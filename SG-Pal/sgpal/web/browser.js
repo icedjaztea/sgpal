@@ -95,6 +95,16 @@ window.SGPalBrowser={render(data,controls){
   if(['11','11confirm','live-commerce-result'].includes(screen)){const item=screen==='11'?data.shopItem:data.item;if(item){const art=node('canvas',undefined,'item-art');art.width=52;art.height=60;controls.paintItem(art,item.art);media.append(art);if(screen==='11'){const owned=saved.inventory.includes(item.id);body=item.description;copy.append(node('h3',item.title),node('p',item.price+' Kopi Coins','item-price'),node('p',owned?'Already yours. Find it in your inventory.':saved.coins<item.price?'You need '+(item.price-saved.coins)+' more coins.':'A little treat within reach.','ownership'))}}}
   if(screen==='live-quest-answer')body='This one is on trust. Choose “Yes, I did it” when you’ve actually finished. “Not yet” keeps it active, with no penalty and no proof needed.';
   if(screen==='live-reward'){const reward=data.result?.reward||{xp:0,coins:0};media.append(picture(saved.species));body=data.result.status==='duplicate'?'Already part of your story. No extra rewards were added.':data.result.kind==='complete'?'Quest complete — recorded as self-reported. Nicely done.':'A new Singapore story, saved to your CultureDex.';const badge=node('div',undefined,'reward-badge');badge.append(node('strong','+'+reward.xp+' Culture XP'),node('span','+'+reward.coins+' Kopi Coins'));copy.append(badge)}
+  if(['live-candidate','live-uncertain'].includes(screen)){
+   const result=data.result||{},parts=(result.observation||'').split(' Singapore connection: ');
+   $('panel-title').textContent=result.discovery_title||data.entry?.title||(screen==='live-candidate'?'Nice find, neighbour!':'Your local lens');
+   const cards=node('div',undefined,'scan-cards');
+   for(const [label,content,icon] of [['Spotted',parts[0]||'Try a clearer photo.','◉'],['The Singapore connection',parts[1]||'Still figuring out the local connection.','✦']]){const card=node('section',undefined,'scan-card');card.append(node('h3',icon+' '+label),node('p',content));cards.append(card)}
+   const note=screen==='live-candidate'?'Looks right? Confirm to save it. New finds earn +10 XP and +5 Kopi Coins; repeat finds earn no extra reward.':'Not confident enough for a reward yet. Try another angle or correct the suggestion.';
+   cards.append(node('p',note,'scan-reward-note'));copy.append(cards);body='';
+  }
+  if(screen==='live-reward'&&data.result?.local_find)body=data.result.status==='duplicate'?'You’ve already collected this find. Keep exploring!':data.result.discovery_title+' joins your local finds. Shiok!';
+  if(screen==='07'&&(saved.local_finds||[]).length){const section=node('section',undefined,'scan-cards');section.append(node('h3','✦ Your local finds'));for(const find of saved.local_finds){const detail=node('details',undefined,'scan-card');detail.append(node('summary',find.title),node('p',find.observation));section.append(detail)}copy.append(section)}
   if(screen==='help')body='Tap or click a choice to select it. Use Tab and Enter, or arrow keys to move through the game choices. Escape goes back. Compact mode also supports rotary turn and press.';
   copy.append(node('p',body,'story-copy'));
   if(screen==='live-working')copy.prepend(node('div','Saving / checking your request','loading-note'));
@@ -104,7 +114,7 @@ window.SGPalBrowser={render(data,controls){
  const actionBox=$('game-actions');actionBox.replaceChildren();
  choices.forEach((choice,i)=>{
   if(data.body&&['Read','Next'].includes(choice.label))return; // Browser text scrolls in full.
-  const label=screen==='01'&&choice.label==='Start'?'Play now':choice.label;const b=node('button',label);b.type='button';b.setAttribute('aria-label',label);b.dataset.action=String(i);b.disabled=!!choice.disabled;b.classList.toggle('selected',i===data.focus);b.classList.toggle('quiet',['Back','Home','Next','Prev','Retry'].includes(choice.label));
+  const label=screen==='live-candidate'&&choice.label==='Yes'?'Looks right — save it':screen==='live-candidate'&&choice.label==='Correct'?'Not quite…':screen==='01'&&choice.label==='Start'?'Play now':choice.label;const b=node('button',label);b.type='button';b.setAttribute('aria-label',label);b.dataset.action=String(i);b.disabled=!!choice.disabled;b.classList.toggle('selected',i===data.focus);b.classList.toggle('quiet',['Back','Home','Next','Prev','Retry'].includes(choice.label));
   if(screen==='02'&&['merlion','otter','mynah'].includes(choice.label)){b.prepend(picture(choice.label,'choice-pal'));b.classList.add('pet-choice')}
   b.onclick=()=>controls.activate(i);
   b.onkeydown=e=>{if(['ArrowLeft','ArrowUp','ArrowRight','ArrowDown'].includes(e.key)){e.preventDefault();const visible=[...actionBox.children].map(el=>Number(el.dataset.action)),at=visible.indexOf(i),step=['ArrowLeft','ArrowUp'].includes(e.key)?-1:1;controls.select(visible[(at+step+visible.length)%visible.length]);actionBox.querySelector('[data-action="'+visible[(at+step+visible.length)%visible.length]+'"]').focus()}else if(e.key==='Escape'){e.preventDefault();controls.back()}};

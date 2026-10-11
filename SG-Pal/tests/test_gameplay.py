@@ -410,3 +410,35 @@ def test_general_local_context_has_no_catalogue_reward(game, monkeypatch):
     assert scan['observation'] == observation
     assert scan['reward'] == {'xp': 0, 'coins': 0}
     assert c.post('/api/confirm', json={'operation_id': scan['operation_id']}).status_code == 409
+
+
+def test_local_find_rewards_once_and_persists(game, monkeypatch):
+    c,path = game
+    def local(*args, **kwargs):
+        return {**result('unknown','high'), 'singapore_related':True, 'discovery_key':'electric-fan', 'discovery_title':'A cooling companion', 'observation':'A floor fan. Singapore connection: Useful in humid weather.'}
+    monkeypatch.setattr(server,'recognise',local)
+    scan=c.post('/api/scan',json=body()).json()
+    assert scan['status']=='candidate' and scan['reward']['coins']==0
+    confirmed=c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()
+    assert confirmed['reward']=={'xp':10,'coins':5}
+    c.post('/api/confirm',json={'operation_id':scan['operation_id']})
+    second=c.post('/api/scan',json=body('blue')).json()
+    assert c.post('/api/confirm',json={'operation_id':second['operation_id']}).json()['status']=='duplicate'
+    # Same photo cannot earn again under another AI-generated item key.
+    monkeypatch.setattr(server,'recognise',lambda *a,**k:{**local(),'discovery_key':'standing-fan'})
+    third=c.post('/api/scan',json=body()).json()
+    assert c.post('/api/confirm',json={'operation_id':third['operation_id']}).json()['reward']['coins']==0
+    state=c.get('/api/state').json()
+    assert state['coins']==5 and state['xp']==10
+    assert state['local_finds'][0]['item_key']=='electric-fan'
+    assert not state['quests']
+
+
+@pytest.mark.parametrize('fields', [dict(confidence='low'),dict(singapore_related=False),dict(discovery_key='../invalid'),dict(discovery_title='')])
+def test_local_find_uncertain_or_invalid_never_rewards(game,monkeypatch,fields):
+    c,_=game
+    monkeypatch.setattr(server,'recognise',lambda *a,**k:{**result('unknown','high'),'singapore_related':True,'discovery_key':'fan','discovery_title':'Fan',**fields})
+    scan=c.post('/api/scan',json=body()).json()
+    assert scan['status']=='uncertain'
+    assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).status_code==409
+    assert c.get('/api/state').json()['coins']==0

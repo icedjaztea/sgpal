@@ -4,6 +4,7 @@ Legacy JSON is imported once, without altering its contents or awarding retroact
 coins. UI profile remains in profile.json. No model call happens inside a DB lock.
 """
 import json
+import re
 import sqlite3
 import time
 import uuid
@@ -72,6 +73,7 @@ class GameStore:
     def initialise(self):
         # Validate the original before creating any migration state.
         with self.connection() as db:
+            db.execute('CREATE TABLE IF NOT EXISTS local_finds (item_key TEXT PRIMARY KEY, title TEXT NOT NULL, photo_id TEXT NOT NULL, hash TEXT NOT NULL UNIQUE, observation TEXT NOT NULL, discovered_sgt TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             version = db.execute("SELECT value FROM meta WHERE key='version'").fetchone()
             if version:
@@ -203,6 +205,7 @@ class GameStore:
             for cid, detail in details.items():
                 detail['completion_method'] = ('self_reported' if cid in reported else 'photo_verified' if detail['evidence_url'] else 'legacy') if detail['completed'] else None
             return {'xp': wallet['xp'], 'coins': wallet['coins'], 'active': wallet['active'], 'log': log, 'completed': [r['culture_id'] for r in quests if r['completed']], 'quest_details': details,
+                    'local_finds': [dict(r) for r in db.execute('SELECT item_key,title,observation,discovered_sgt FROM local_finds ORDER BY discovered_sgt DESC')],
                     'inventory': [r['item_id'] for r in db.execute('SELECT item_id FROM inventory ORDER BY purchased_sgt,item_id')],
                     'room': {r['slot_id']: r['item_id'] for r in db.execute('SELECT * FROM room')}}
 
@@ -290,9 +293,14 @@ class GameStore:
             if cid not in [*BY_ID, 'unknown'] or result.get('confidence') not in ('high', 'medium', 'low') or type(result.get('verified')) is not bool or not isinstance(result.get('observation'), str):
                 raise GameError(502, 'AI response was invalid. Retry with no reward claimed.')
             high = result['confidence'] == 'high' and cid in BY_ID
+            key = result.get('discovery_key', '')
+            title = result.get('discovery_title', '')
+            local = cid == 'unknown' and result.get('singapore_related') is True and result['confidence'] == 'high' and isinstance(key,str) and re.fullmatch(r'[a-z][a-z0-9-]{1,63}',key) and isinstance(title,str) and 0 < len(title) <= 80
             payload = {'culture_id': cid, 'confidence': result['confidence'], 'observation': result['observation'][:500], 'reward': {'xp': 0, 'coins': 0}}
+            if local:
+                payload.update(local_find=True, discovery_key=key, discovery_title=title)
             if row['kind'] == 'scan':
-                status = 'candidate' if high and (not row['target'] or row['target'] == cid) else 'uncertain'
+                status = 'candidate' if (high or (local and not row['target'])) and (not row['target'] or row['target'] == cid) else 'uncertain'
             else:
                 status = 'rejected'
                 if high and result['verified'] and cid == row['target']:
@@ -327,9 +335,20 @@ class GameStore:
                 raise GameError(409, 'Only a confident, recognised suggestion can be confirmed.')
             payload = json.loads(row['result'])
             cid = payload['culture_id']
+            if cid == 'unknown' and payload.get('local_find'):
+                photo = db.execute('SELECT * FROM photos WHERE id=?', (row['photo_id'],)).fetchone()
+                already = db.execute('SELECT 1 FROM discoveries WHERE hash=?', (photo['hash'],)).fetchone()
+                fresh = not already and db.execute('INSERT OR IGNORE INTO local_finds VALUES(?,?,?,?,?,?)', (payload['discovery_key'],payload['discovery_title'],photo['id'],photo['hash'],payload['observation'],photo['received_sgt'])).rowcount
+                status = 'confirmed' if fresh else 'duplicate'
+                payload['reward'] = {'xp': DISCOVERY_XP if fresh else 0, 'coins': DISCOVERY_COINS if fresh else 0}
+                if fresh:self.reward(db, 'local:'+payload['discovery_key'], DISCOVERY_XP, DISCOVERY_COINS)
+                db.execute('UPDATE operations SET status=?,result=? WHERE id=?', (status,json.dumps(payload),oid))
+                return {**payload, 'operation_id':oid, 'status':status, 'kind':'scan'}
             if cid not in BY_ID:
                 raise GameError(409, 'Culture is not in the catalogue.')
             photo = db.execute('SELECT * FROM photos WHERE id=?', (row['photo_id'],)).fetchone()
+            if db.execute('SELECT 1 FROM local_finds WHERE hash=?', (photo['hash'],)).fetchone():
+                raise GameError(409, 'This photo already earned a local-find reward. Use a new photo for a catalogue discovery.')
             fresh = db.execute('INSERT OR IGNORE INTO discoveries VALUES(?,?,?,?,?,?,?)', (cid, photo['id'], photo['hash'], photo['received'], photo['received_sgt'], DISCOVERY_XP, DISCOVERY_COINS)).rowcount
             status = 'confirmed' if fresh else 'duplicate'
             payload['reward'] = {'xp': DISCOVERY_XP if fresh else 0, 'coins': DISCOVERY_COINS if fresh else 0}
