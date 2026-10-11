@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
                 # Only test fixture clock reset, never a production endpoint.
                 import sqlite3
                 with sqlite3.connect(Path(temp)/'accounts.sqlite3') as db:db.execute('DELETE FROM limits')
-                page.locator('#account-open').click();page.locator('#login-email').fill(email)
+                page.locator('#settings-open').click();page.locator('#account-open').click();page.locator('#login-email').fill(email)
                 page.locator('#account-email-form button').click()
 
                 try:page.wait_for_function('document.querySelector("#account-message").textContent.includes("Request accepted")',timeout=10000)
@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             for label in ['Start','mynah','Choose','Keep']:choose(q,label)
             q.wait_for_function('SGPal.inspect().saved.adopted')
             login(q,'bob@example.test')
-            p.locator('#friends-open').click();q.locator('#friends-open').click()
+            p.locator('#game-nav [data-destination="16"]').click();q.locator('#game-nav [data-destination="16"]').click()
             p.locator('#friend-code-input').wait_for();q.locator('#friend-code-input').wait_for()
             bc=q.locator('#friends-content code').first.inner_text()
             own=p.evaluate('SGPal.inspect().saved')
@@ -66,16 +66,16 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             q.wait_for_function("document.querySelector('#friends-message').textContent==='Friend request accepted.'")
             p.locator('#friends-content').get_by_role('button',name='Refresh',exact=True).click()
             p.locator('#friends-content').get_by_role('button',name='Visit room').click()
-            p.locator('#friends-content canvas').wait_for()
+            p.locator('#visit-banner').wait_for(state='visible')
             p.screenshot(path=str(OUT/'friends-desktop.png'))
             assert p.evaluate('SGPal.inspect().saved')==own
-            p.locator('#friends-close').click()
+            p.locator('#return-home').click()
             p.wait_for_function("SGPal.inspect().current==='04'")
             q.locator('#friends-content').get_by_role('button',name='Visit room').click()
-            q.locator('#friends-content canvas').wait_for()
+            q.locator('#visit-banner').wait_for(state='visible')
             q.screenshot(path=str(OUT/'friends-phone.png'))
             assert q.evaluate('document.documentElement.scrollWidth<=innerWidth')
-            p.locator('#friends-open').click()
+            p.locator('#game-nav [data-destination="16"]').click()
             p.locator('#friends-content').get_by_role('button',name='Remove friend').click()
             p.wait_for_function("document.querySelector('#friends-message').textContent.includes('revoked')")
             assert p.evaluate("async code=>(await fetch('/api/friends/'+code+'/room')).status",bc)==403

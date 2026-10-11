@@ -22,6 +22,11 @@ def screen(page,name):
     except Exception:
         print('Expected',name,'actual',info(page),page.locator('#panel-copy').inner_text());raise
 def choose(page,label):
+    if info(page)['current']=='04':
+        if label in ('Menu','Status','Pal'):
+            page.locator('#settings-open').click();page.locator({'Menu':'#pocket-open','Status':'#request-status','Pal':'#pal-open'}[label]).click();return
+        nav=page.locator('#game-nav').get_by_role('button',name=label,exact=True)
+        if nav.count():nav.click();return
     assert label in info(page)['choices'],(label,info(page))
     button=page.locator('#game-actions').get_by_role('button',name=label,exact=True)
     button.focus();button.press('Enter')
@@ -49,8 +54,8 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(url);screen(page,'01');assert page.locator('#photo').get_attribute('capture') is None;page.locator('#screen').focus()
             start=page.locator('#game-actions').get_by_role('button',name='Start',exact=True)
-            start.focus();start.press('ArrowRight');assert info(page)['focus']==1
-            page.keyboard.press('ArrowLeft');assert info(page)['focus']==0
+            start.focus();start.press('ArrowRight');assert page.evaluate("document.activeElement.textContent==='Help'")
+            page.keyboard.press('ArrowLeft');assert page.evaluate("document.activeElement.textContent==='Start'")
             for label in ['Start','otter','Choose','Reroll','Keep']:
                 page.locator('#game-actions').get_by_role('button',name=label,exact=True).tap()
             screen(page,'04');assert info(page)['saved']['name']=='Pebble'
@@ -158,8 +163,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
                 assert abs(art['width']/art['height']-320/168)<.01,(label,art)
                 nav=page.locator('#game-nav').bounding_box()
                 assert nav['y']+nav['height']<=height+1,(label,nav)
-                if width>800:
-                    assert art['y']>=0 and art['y']+art['height']<=height,(label,art)
+                # The immersive camera deliberately crops the scene; proportions stay fixed.
                 assert info(page)['saved']==baseline
                 page.screenshot(path=str(OUT/('responsive-'+label+'.png')))
             page.set_viewport_size({'width':390,'height':844})
@@ -168,18 +172,20 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Camera');screen(page,'05error');assert page.locator('#game-actions').get_by_role('button',name='Upload',exact=True).is_visible()
             choose(page,'Back');choose(page,'Back');screen(page,'04')
             page.locator('#game-nav').get_by_role('button',name='Quests',exact=True).click();screen(page,'09')
-            page.locator('#panel-close').click();screen(page,'04menu')
+            page.locator('#panel-close').click();screen(page,'04')
             page.locator('#game-nav').get_by_role('button',name='Home',exact=True).click();screen(page,'04')
             page.emulate_media(reduced_motion='reduce')
             assert page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
             assert page.locator('#game-actions button').first.evaluate("el=>getComputedStyle(el).transitionDuration")=='0s'
             page.set_viewport_size({'width':1440,'height':900})
+            page.locator('#settings-open').click()
             if page.locator('#fullscreen').is_visible():
                 page.locator('#fullscreen').click()
                 if page.evaluate('!!document.fullscreenElement'):
                     page.wait_for_function("document.getElementById('fullscreen').textContent==='Exit fullscreen'")
                     page.locator('#fullscreen').click()
                     page.wait_for_function('!document.fullscreenElement')
+            page.locator('#settings-close').click()
             # Browser gallery remains visibly isolated and cannot mutate progress.
             page.evaluate("SGPal.preview('11confirm')")
             assert page.locator('#mode').inner_text().startswith('DESIGN PREVIEW')

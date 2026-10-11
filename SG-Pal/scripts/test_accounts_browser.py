@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
                 # Only test fixture clock reset, never a production endpoint.
                 import sqlite3
                 with sqlite3.connect(Path(temp)/'accounts.sqlite3') as db:db.execute('DELETE FROM limits')
-                page.locator('#account-open').click();page.locator('#login-email').fill(email)
+                page.locator('#settings-open').click();page.locator('#account-open').click();page.locator('#login-email').fill(email)
                 page.locator('#account-email-form button').click()
 
                 try:page.wait_for_function('document.querySelector("#account-message").textContent.includes("Request accepted")',timeout=10000)
@@ -58,8 +58,8 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             q.wait_for_function('window.SGPal?.inspect().saved.adopted===true')
             assert q.evaluate('SGPal.inspect().saved.owner_id')==owner
             q.reload();q.wait_for_function('window.SGPal?.inspect().saved.adopted===true')
-            p.locator('#account-open').click();p.screenshot(path=str(OUT/'accounts-desktop.png'))
-            q.locator('#account-open').click();q.locator('#sign-out').click()
+            p.locator('#settings-open').click();p.locator('#account-open').click();p.screenshot(path=str(OUT/'accounts-desktop.png'))
+            q.locator('#settings-open').click();q.locator('#account-open').click();q.locator('#sign-out').click()
             q.wait_for_function('window.SGPal?.inspect().current==="01"')
             assert not q.evaluate('SGPalAccount.session.signed_in')
             assert p.evaluate('SGPalAccount.session.signed_in')
