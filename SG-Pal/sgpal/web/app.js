@@ -416,5 +416,5 @@ async function init(){
  Object.values(screens).filter(s=>!s.id.startsWith('live-')).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).forEach(s=>{const op=document.createElement('option');op.value=s.id;op.textContent=s.id+' · '+s.title+' (phase '+s.phase+')';document.getElementById('scene').append(op)});
  ready=true;await loadSaved();
 }
-init().catch(()=>{ctx.fillStyle=C.paper;ctx.fillRect(0,0,320,240);text('ASSETS COULD NOT LOAD',16,80);text('USE THE LOCAL WEB SERVER',16,110)});
+init().catch(()=>{ctx.fillStyle=C.paper;ctx.fillRect(0,0,320,240);text('ASSETS COULD NOT LOAD',16,80);text('USE THE LOCAL WEB SERVER',16,110);if(!compact){document.getElementById('panel-title').textContent='The room could not load.';document.getElementById('panel-copy').textContent='Check the local server and try again. Your saved progress has not been changed.';const retry=document.createElement('button');retry.textContent='Retry loading';retry.onclick=()=>location.reload();document.getElementById('game-actions').replaceChildren(retry)}});
 })();

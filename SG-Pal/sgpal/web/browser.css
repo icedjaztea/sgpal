@@ -42,3 +42,5 @@ body.browser-game{font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Sego
 .mobile-level{display:none}@media(max-width:420px){.mobile-level{display:inline;font-weight:700;color:#8a5b45}}
 
 @media(max-width:420px){.game-hud{gap:6px}.game-brand{font-size:16px}.game-hud #fullscreen{font-size:0!important;min-width:44px;min-height:44px!important;padding:6px!important}.game-hud #fullscreen:after{content:"⛶";font-size:22px}.game-hud #fullscreen[data-active="true"]:after{content:"Exit";font-size:12px}}
+
+@media(max-width:350px){.game-hud .game-brand{display:none}}

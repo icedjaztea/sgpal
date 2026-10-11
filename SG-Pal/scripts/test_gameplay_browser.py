@@ -185,6 +185,10 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             page.add_init_script("Object.defineProperty(document,'fullscreenEnabled',{get:()=>false})")
             page.reload();screen(page,'04');assert not page.locator('#fullscreen').is_visible()
             assert info(page)['saved']==baseline
+            page.route('**/assets/merlion.png',lambda route:route.abort())
+            page.reload();page.get_by_role('button',name='Retry loading',exact=True).wait_for()
+            page.unroute('**/assets/merlion.png');page.get_by_role('button',name='Retry loading',exact=True).click()
+            screen(page,'04');assert info(page)['saved']==baseline
             # Switching layout reads the same server progress.
             page.goto(url+'/?kiosk=1');screen(page,'04');assert info(page)['saved']==baseline
             assert page.locator('#screen').bounding_box()['width']==320
