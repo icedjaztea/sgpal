@@ -53,10 +53,10 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             context=browser.new_context(viewport={'width':390,'height':844},has_touch=True)
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(url);screen(page,'01');assert page.locator('#photo').get_attribute('capture') is None;page.locator('#screen').focus()
-            start=page.locator('#game-actions').get_by_role('button',name='Start',exact=True)
+            start=page.locator('#game-actions').get_by_role('button',name='Play now',exact=True)
             start.focus();start.press('ArrowRight');assert page.evaluate("document.activeElement.textContent==='Help'")
-            page.keyboard.press('ArrowLeft');assert page.evaluate("document.activeElement.textContent==='Start'")
-            for label in ['Start','otter','Choose','Reroll','Keep']:
+            page.keyboard.press('ArrowLeft');assert page.evaluate("document.activeElement.textContent==='Play now'")
+            for label in ['Play now','otter','Choose','Reroll','Keep']:
                 page.locator('#game-actions').get_by_role('button',name=label,exact=True).tap()
             screen(page,'04');assert info(page)['saved']['name']=='Pebble'
             choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo')

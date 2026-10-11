@@ -1,4 +1,4 @@
-"""Focused presentation acceptance. Mock email/AI, real sessions and saves; no Pi."""
+"""Focused presentation acceptance. Real recovery auth/AI, real sessions and saves; no Pi."""
 import hashlib
 import os
 from pathlib import Path
@@ -25,7 +25,7 @@ def key(p,label):
 with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     url=f'http://127.0.0.1:{port}';photo=Path(temp)/'kopi.png';Image.new('RGB',(300,200),'orange').save(photo)
-    proc=subprocess.Popen([sys.executable,'-m','uvicorn','scripts.gameplay_fixture:app','--host','127.0.0.1','--port',str(port)],cwd=ROOT,env={**os.environ,'SGPAL_DATA_DIR':temp,'SGPAL_BROWSER_FIXTURE':'1','SGPAL_AUTH_FIXTURE':'1'},stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    proc=subprocess.Popen([sys.executable,'-m','uvicorn','scripts.gameplay_fixture:app','--host','127.0.0.1','--port',str(port)],cwd=ROOT,env={**os.environ,'SGPAL_DATA_DIR':temp,'SGPAL_BROWSER_FIXTURE':'1'},stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
         for _ in range(100):
             try:urlopen(url+'/api/status',timeout=1);break
@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             p=a.new_page();q=b.new_page();errors=[]
             for page,species in [(p,'otter'),(q,'mynah')]:
                 page.on('pageerror',lambda e:errors.append(str(e)));page.goto(url);screen(page,'01')
-                for label in ['Start',species,'Choose','Keep']:key(page,label)
+                for label in ['Play now',species,'Choose','Keep']:key(page,label)
                 screen(page,'04')
             # Mouse-free home -> feature -> action -> Back; camera denial is emulated.
             p.evaluate("()=>{navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(new Error('denied'),{name:'NotAllowedError'}))}")
@@ -58,16 +58,13 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
                 bounds=page.locator('#room-art').bounding_box();assert abs(bounds['width']/bounds['height']-320/168)<.01
             q.locator('#game-nav [data-destination="11"]').click();screen(q,'11')
             q.screenshot(path=str(OUT/'immersive-phone-window.png'));q.locator('#panel-close').click();screen(q,'04')
-            # Existing mocked email fixture only; no production auth bypass.
-            def login(page,email):
-                with sqlite3.connect(Path(temp)/'accounts.sqlite3') as db:db.execute('DELETE FROM limits')
+            # Real recovery accounts with isolated temporary saves.
+            def login(page,*_):
                 page.locator('#settings-open').click();page.locator('#account-open').click()
-                page.locator('#login-email').fill(email)
-                page.keyboard.press('ArrowLeft');assert page.locator('#login-email').evaluate('(n)=>n===document.activeElement') # input keeps native editing
-                page.locator('#account-email-form button').click()
-                page.wait_for_function("document.querySelector('#account-message').textContent.includes('Request accepted')")
-                page.goto(url+'/#token_hash='+hashlib.sha256(email.encode()).hexdigest())
-                page.locator('#confirm-email-link').click();page.wait_for_function('window.SGPalAccount?.session?.signed_in===true');screen(page,'04')
+                page.wait_for_function("document.querySelector('#account-message').textContent!=='Working…'")
+                page.locator('#save-pal').click();page.locator('#recovery-issued').wait_for(state='visible')
+                page.locator('#recovery-kept').click();page.wait_for_function('SGPalAccount.session.signed_in')
+                page.locator('#account-close').click()
             login(p,'alice@example.test');login(q,'bob@example.test')
             for page in (p,q):page.locator('#game-nav [data-destination="16"]').click();page.locator('#friend-code-input').wait_for()
             code=q.locator('#friends-content code').first.inner_text()
@@ -84,5 +81,5 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             p.goto(url+'/?kiosk=1');screen(p,'04');bounds=p.locator('#screen').bounding_box();assert bounds['width']==320 and bounds['height']==240
             p.locator('#screen').focus();p.keyboard.press('ArrowRight');p.keyboard.press('Enter');screen(p,'05');p.keyboard.press('Escape');screen(p,'04')
             assert not errors,errors
-            browser.close();print('PASS: keyboard onboarding/navigation/Back/focus, saved discovery/reload and lost-response recovery (mock AI), desktop + phone scenes, real saved-room visit with mocked email auth, compact rendering/navigation. No physical devices tested.')
+            browser.close();print('PASS: keyboard onboarding/navigation/Back/focus, saved discovery/reload and lost-response recovery (mock AI), desktop + phone scenes, real saved-room visit with real recovery auth, compact rendering/navigation. No physical devices tested.')
     finally:proc.terminate();proc.wait(timeout=10)

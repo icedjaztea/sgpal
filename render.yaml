@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: sgpal
+    runtime: python
+    plan: starter
+    region: singapore
+    rootDir: SG-Pal
+    numInstances: 1
+    buildCommand: pip install -r requirements-web.txt
+    startCommand: python -m uvicorn sgpal.server:app --host 0.0.0.0 --port $PORT --workers 1 --no-proxy-headers
+    healthCheckPath: /healthz
+    disk:
+      name: sgpal-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.12
+      - key: SGPAL_DATA_DIR
+        value: /var/data/sgpal
+      - key: SGPAL_PUBLIC_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

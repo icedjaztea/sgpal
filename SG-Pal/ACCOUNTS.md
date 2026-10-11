@@ -1,3 +1,5 @@
+> **Current MVP uses private recovery codes:** see [DEPLOY_RENDER.md](DEPLOY_RENDER.md). Guest → Save my Pal preserves the current player. Restore my Pal opens it on another browser. Public friend codes never authenticate. Email configuration below is retained only for legacy accounts; no email address alone grants access.
+
 # Browser accounts and private progress
 
 SG Pal uses **Supabase Auth** for maintained, managed email magic-link authentication. FastAPI owns opaque HttpOnly sessions, gameplay and rewards. Supabase receives email addresses, not discovery photos or gameplay saves. There is no mock login in the normal application.

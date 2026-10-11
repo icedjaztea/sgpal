@@ -37,17 +37,18 @@
 <p id="key-hint">← → Select · Enter Confirm · Esc Back</p>
 </div>
 <dialog id="settings-dialog" aria-labelledby="settings-heading"><button id="settings-close">Close</button><h2 id="settings-heading">Profile &amp; settings</h2>
-<div class="account-strip"><p id="account-label">Starting private guest session…</p><p id="save-status" role="status">Loading progress…</p><button id="refresh-progress">Refresh progress</button><button id="account-open">Save my progress</button><button id="fullscreen" hidden>Fullscreen</button></div>
+<div class="account-strip"><p id="account-label">Starting private guest session…</p><p id="save-status" role="status">Loading progress…</p><button id="refresh-progress">Refresh progress</button><button id="account-open">Save my Pal</button><button id="fullscreen" hidden>Fullscreen</button></div>
 <p><button id="request-status" hidden>Request status</button><button id="pal-open">Say hello</button><button id="profile-open">Pal profile</button><button id="game-settings-open">Game settings</button><button id="decorate-open">Decorate room</button><button id="pocket-open">Pocket menu</button></p><p id="browser-status" role="status"></p>
       <details class="browser-help"><summary>Controls &amp; privacy</summary><p>Tap or click a button to select. Tab moves between controls; Enter selects; Escape goes back. Arrow keys also move through game choices.</p><p>Analyse sends your photo to OpenAI. Photos and progress stay on this server. Quests are self-reported. Camera needs HTTPS or device-local localhost; use Upload on ordinary LAN HTTP.</p><a href="?kiosk=1">Open compact 320 × 240 mode</a><p><button type="button" onclick="SGPal.preview('01')">Design previews · sample data</button></p></details>
 </dialog>
 <dialog id="account-dialog" aria-labelledby="account-heading">
   <button id="account-close" type="button">Close</button><h2 id="account-heading">Save your progress</h2><p id="account-description"></p>
-  <form id="account-email-form"><label for="login-email">Email address</label><input id="login-email" type="email" autocomplete="email" maxlength="254" required><button type="submit">Email me a sign-in link</button></form>
-  <button id="confirm-email-link" type="button" hidden>Confirm email sign-in</button>
-  <div id="account-conflict" hidden><p>This email already has a save. Use the account save, or keep playing this guest save. No balances or inventories will be combined. If you choose the account, this guest save is archived on the server and will no longer be active in this browser.</p><button id="use-account" type="button">Use account save</button><button id="use-guest" type="button">Keep guest save</button></div>
+  <button id="save-pal" type="button">Save my Pal</button>
+  <div id="recovery-issued" hidden><p>Keep this private code somewhere safe. It opens your Pal on another browser. Lost codes cannot be recovered.</p><code id="recovery-code" style="display:block;overflow-wrap:anywhere;user-select:all"></code><button id="copy-recovery" type="button">Copy code</button><button id="recovery-kept" type="button">I saved my code</button></div>
+  <button id="restore-open" type="button">Restore my Pal</button>
+  <div id="guest-warning" hidden><p>Save my Pal before leaving this guest, or Cancel to keep playing. Your saves and coins will not be combined.</p><button id="guest-save" type="button">Save my Pal</button><button id="guest-cancel" type="button">Cancel</button></div>
+  <form id="restore-form" hidden><label for="recovery-input">Private recovery code</label><input id="recovery-input" type="password" autocomplete="off" spellcheck="false" maxlength="200" required><button type="submit">Restore this Pal</button><button id="restore-cancel" type="button">Cancel</button></form>
   <p id="account-message" role="status"></p><button id="sign-out" type="button" hidden>Sign out</button>
-  <details id="account-import"><summary>Import an existing local save</summary><p>Ask the server operator to prepare a one-time import key using ACCOUNTS.md. Import into a fresh guest; existing saves are never overwritten.</p><label for="legacy-key">Choose import key file</label><input id="legacy-key" type="file" accept=".txt"></details>
 </dialog>
 <dialog id="friends-dialog" aria-labelledby="friends-heading">
 <button id="friends-close" type="button">Return to my room</button><h2 id="friends-heading">Your neighbours</h2>

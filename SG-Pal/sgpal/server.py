@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from threading import Lock
 from typing import Literal
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from filelock import FileLock, Timeout
@@ -101,6 +102,13 @@ def save_profile(profile):
 
 @app.middleware("http")
 async def private_sessions(request: Request, call_next):
+    # Canonical HTTPS origin works behind Render TLS termination without trusting
+    # client-controlled forwarded headers. All browser APIs use relative URLs.
+    public=os.getenv('SGPAL_PUBLIC_URL','').rstrip('/')
+    if public and request.url.path!='/healthz':
+        parsed=urlparse(public)
+        if parsed.scheme not in ('http','https') or request.headers.get('host')!=parsed.netloc:
+            return JSONResponse({'detail':'Invalid application host.'},status_code=400)
     # No URL/body owner ID grants access. Even photo UUIDs require this session.
     if not request.url.path.startswith('/api/'):
         response=await call_next(request)
@@ -115,7 +123,7 @@ async def private_sessions(request: Request, call_next):
             if int(request.headers.get('content-length','0'))>9*1024*1024:
                 raise HTTPException(413,'Photo request too large. Use a photo under 6 MB.')
             origin=request.headers.get('origin')
-            if origin and origin!=str(request.base_url).rstrip('/'):
+            if origin and origin!=(public or str(request.base_url).rstrip('/')):
                 raise HTTPException(403,'Cross-origin writes are not allowed.')
             if fresh or not secrets.compare_digest(request.headers.get('x-sgpal-csrf','').encode(),identity['csrf'].encode()):
                 raise HTTPException(403,'Session check failed. Reload before saving.')
@@ -156,6 +164,13 @@ async def private_sessions(request: Request, call_next):
     response.headers['Referrer-Policy']='no-referrer'
     response.headers['X-Content-Type-Options']='nosniff'
     return response
+
+
+@app.get('/healthz')
+def healthz():
+    # Opening the persistent session DB checks the mount is writable.
+    accounts.Sessions(DATA)
+    return {'ok':True}
 
 
 app.include_router(accounts.router(lambda:DATA))

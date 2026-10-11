@@ -17,7 +17,7 @@ def router(root, profile_model):
         store=accounts.Sessions(root())
         with store.db() as db:
             identity=store.row(db)
-            if not identity['subject']:raise HTTPException(401,'Sign in with email to use friends.')
+            if not identity['subject']:raise HTTPException(401,'Save my Pal with a private recovery code to use friends.')
             db.execute('CREATE TABLE IF NOT EXISTS friend_codes(owner TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL)')
             db.execute("CREATE TABLE IF NOT EXISTS friendships(a TEXT NOT NULL,b TEXT NOT NULL,requester TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('pending','accepted')),PRIMARY KEY(a,b),CHECK(a<b))")
             owner=identity['owner']
