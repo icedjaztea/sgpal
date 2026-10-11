@@ -13,6 +13,7 @@ import queue
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 from urllib.request import urlopen
 from urllib.parse import urlparse
@@ -69,22 +70,63 @@ def panel():
     return SPIBrowserDisplay({'spi_hz':8000000,'rotate_180':False,'swap_red_blue':False})
 
 
-def capture(cdp,event):
-    # Only runs after the player deliberately chooses Upload. No HTTP camera API.
+def capture(cdp,event,display,events,is_stopped):
+    """Private CSI preview; nothing uploads until Snap and then Analyse."""
+    from PIL import Image
     with tempfile.TemporaryDirectory(prefix='sgpal-photo-',dir=RUNTIME) as folder:
         photo=Path(folder)/'capture.jpg'
-        cdp.evaluate("document.getElementById('accessible').textContent='Capturing CSI photo…'")
+        camera=None;latest=[None];last_frame=[time.monotonic()]
         try:
-            subprocess.run(['rpicam-still','--nopreview','--timeout','1000','--width','1280','--height','960','--encoding','jpg','--output',str(photo)],check=True,timeout=20,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-            os.chmod(photo,0o600)
-            cdp.call('DOM.setFileInputFiles',{'files':[str(photo)],'backendNodeId':event['backendNodeId']})
-            # The shared file reader must finish before deleting its temporary input.
-            end=time.monotonic()+5
-            while time.monotonic()<end:
-                if cdp.evaluate("SGPal.inspect().current==='05photo'"):break
-                time.sleep(.1)
-        except (subprocess.SubprocessError,OSError):
-            cdp.evaluate("SGPal.cameraFailure('CSI CAPTURE FAILED. TRY UPLOAD AGAIN.')")
+            camera=subprocess.Popen(['rpicam-vid','--nopreview','--timeout','0','--width','640','--height','480','--framerate','8','--codec','mjpeg','--output','-'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+            def frames():
+                buffer=b''
+                while True:
+                    chunk=camera.stdout.read(4096)
+                    if not chunk:break
+                    buffer+=chunk
+                    while b'\xff\xd9' in buffer:
+                        end=buffer.index(b'\xff\xd9')+2
+                        frame,buffer=buffer[:end],buffer[end:]
+                        start=frame.find(b'\xff\xd8')
+                        if start>=0:
+                            latest[0]=frame[start:];last_frame[0]=time.monotonic()
+                    if len(buffer)>2000000:buffer=b''
+            threading.Thread(target=frames,daemon=True).start()
+            cdp.evaluate('SGPal.piPreview()')
+            deadline=time.monotonic()+12
+            while not is_stopped():
+                while not events.empty():
+                    action,_=events.get()
+                    if action in ('prev','next','select','back'):
+                        cdp.key({'prev':'ArrowLeft','next':'ArrowRight','select':'Enter','back':'Escape'}[action])
+                if camera.poll() is not None or time.monotonic()-last_frame[0]>12:
+                    raise RuntimeError('Camera preview stopped')
+                state=cdp.evaluate('SGPal.piPreviewState()')
+                if state=='cancel':return
+                if latest[0]:
+                    if state=='snap':
+                        photo.write_bytes(latest[0]);photo.chmod(0o600)
+                        cdp.call('DOM.setFileInputFiles',{'files':[str(photo)],'backendNodeId':event['backendNodeId']})
+                        end=time.monotonic()+5
+                        while time.monotonic()<end:
+                            if cdp.evaluate("SGPal.inspect().current==='05photo'"):return
+                            time.sleep(.1)
+                        raise RuntimeError('Photo read timed out')
+                    cdp.evaluate('SGPal.piFrame('+json.dumps(base64.b64encode(latest[0]).decode())+')')
+                    deadline=time.monotonic()+12
+                elif time.monotonic()>deadline or camera.poll() is not None:
+                    raise RuntimeError('Camera preview unavailable')
+                frame=cdp.call('Page.captureScreenshot',{'format':'png','captureBeyondViewport':False})
+                display.show(Image.open(io.BytesIO(base64.b64decode(frame['data']))))
+                time.sleep(.12)
+        except (subprocess.SubprocessError,OSError,RuntimeError):
+            cdp.evaluate("SGPal.cameraFailure('CSI PREVIEW FAILED. RETRY CAMERA.')")
+        finally:
+            if camera:
+                camera.terminate()
+                try:camera.wait(timeout=5)
+                except subprocess.TimeoutExpired:camera.kill();camera.wait()
+                camera.stdout.close()
 
 
 def run(args):
@@ -132,7 +174,7 @@ def run(args):
                 print('Input: '+action,flush=True)
             frame=cdp.call('Page.captureScreenshot',{'format':'png','captureBeyondViewport':False})
             display.show(Image.open(io.BytesIO(base64.b64decode(frame['data']))))
-            if args.camera and cdp.events:capture(cdp,cdp.events.pop(0))
+            if args.camera and cdp.events:capture(cdp,cdp.events.pop(0),display,events,lambda:stopped)
             time.sleep(.12)
     finally:
         if controls:controls.close()

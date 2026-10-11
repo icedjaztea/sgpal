@@ -94,3 +94,7 @@ Left/Right (or A/D) selects, Enter confirms, Esc/B goes Back, Q closes the remot
 ### Confirmed knob and two-button setup
 Private configuration `~/.config/sgpal-online.json`: rotary_a 5, rotary_b 6, rotary_press 13, back_button 19, scan_button 26 (BCM). Use `run --controls --camera`, without `--touch`. Mac remote remains compatible.
 With `--camera`, choosing Camera or Upload invokes the local CSI still capture through the existing private chooser bridge. It does not request browser webcam permission or disable browser security. Capture remains user-triggered; Analyse remains a separate hosted request. Physical wiring and detent calibration still require local confirmation.
+
+### Live CSI preview
+Camera/Upload now starts a private 640×480 MJPEG stream. The LCD shows the current frame with Snap and Back; knob, physical Back and Mac remote use the same actions. Snap freezes the latest frame for the existing review screen. Only Analyse sends it to the hosted AI. Back stops the camera. No camera HTTP server or disk preview recording is created. Preview speed is limited by Pi 3 SPI/browser performance.
+General scans now describe the visible scene and a grounded Singapore connection even outside the catalogue. Unknown or uncertain scans retain zero rewards and cannot be confirmed as catalogue discoveries.
