@@ -400,3 +400,13 @@ def test_native_answer_failure_preserves_memory_and_disk(tmp_path,monkeypatch):
     with pytest.raises(OSError):store.finish_self_reported('kopi')
     assert store.data['xp']==10 and store.data['completed']==[]
     assert store.path.read_bytes()==before
+
+
+def test_general_local_context_has_no_catalogue_reward(game, monkeypatch):
+    c,_ = game
+    observation = 'A bicycle is visible. In Singapore, park connectors offer cycling routes; the photo does not establish its location.'
+    monkeypatch.setattr(server, 'recognise', lambda *args, **kwargs: {**result('unknown', 'high'), 'observation': observation})
+    scan = c.post('/api/scan', json=body()).json()
+    assert scan['observation'] == observation
+    assert scan['reward'] == {'xp': 0, 'coins': 0}
+    assert c.post('/api/confirm', json={'operation_id': scan['operation_id']}).status_code == 409
