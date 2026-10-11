@@ -3,7 +3,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from fastapi.testclient import TestClient
+from session_client import SessionClient as TestClient
 from core import Store
 from sgpal import server
 
@@ -11,6 +11,7 @@ from sgpal import server
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(server, 'DATA', tmp_path)
+    monkeypatch.setattr(server, 'data_dir', lambda: tmp_path)
     return TestClient(server.app)
 
 
@@ -84,6 +85,7 @@ def test_failed_write_preserves_profile(client, tmp_path, monkeypatch):
 
 
 def test_concurrent_adoption_has_one_winner(client):
+    client.get("/api/auth/session")
     with ThreadPoolExecutor(max_workers=2) as pool:
         responses = list(pool.map(lambda name: client.post('/api/adopt', json={'species': 'otter', 'name': name}), ['Kaya', 'Pebble']))
     assert sorted(r.status_code for r in responses) == [200, 409]
@@ -94,4 +96,4 @@ def test_origin_and_shared_catalogue(client):
     assert len(client.get('/api/catalogue').json()) == 10
     assert client.get('/').status_code == 200
     assert client.get('/assets/otter.png').status_code == 200
-    assert client.get('/api/state').headers['cache-control'] == 'no-store'
+    assert client.get('/api/state').headers['cache-control'] == 'private, no-store'

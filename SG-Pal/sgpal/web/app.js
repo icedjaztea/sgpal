@@ -19,6 +19,7 @@ let shopItems=[],roomSlots=[],shopIndex=0,slotIndex=0,selectedDecor=null;
 let saved=empty(),catalogue=[],menuPage=0,dexPage=0,questPage=0,detailPage=0,selectedEntry=null,saving=false;
 const browserStorage=new URLSearchParams(location.search).get('storage')==='browser';
 backend=!browserStorage;
+if(browserStorage){document.querySelector('.account-strip').hidden=true;}
 const sample={...empty(),adopted:true,species:'merlion',name:'Kopi',xp:140,coins:80,discoveries:['001'],quests:['chope'],inventory:['plant']};
 const state=()=>gallery?sample:saved;
 const assets={};
@@ -51,9 +52,10 @@ function register(id,title,phase,draw,meta){screens[id]={id,title,phase,draw,...
 function nav(id){stopCamera();current=id;focus=0;render();}
 function goHome(){nav('04')}
 function unavailable(title='Not connected'){nav('blocked');screens.blocked.context=title;render()}
-async function api(path,body){
+async function api(path,body,revision=saved.revision){
+ if(body)window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Saving / checking…'}));
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60000);
- try{const r=await fetch('/api/'+path,{signal:controller.signal,method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(!r.ok){let data;try{data=await r.json()}catch(_){}const error=Error(typeof data?.detail==='string'?data.detail:'Request failed. Check connection and retry.');error.status=r.status;throw error}return await r.json()}catch(e){if(e.name==='AbortError')throw Error('Request timed out. Use Status before retrying; the server may have saved it.');if(e instanceof TypeError)throw Error('Connection lost. Use Status or Retry when the server is reachable.');throw e}finally{clearTimeout(timeout)}
+ try{const r=await fetch('/api/'+path,{signal:controller.signal,method:body?'POST':'GET',headers:body?{'Content-Type':'application/json',...window.SGPalAccount.headers(),...(revision?{'If-Match':revision}:{})}:{},body:body?JSON.stringify(body):undefined});if(!r.ok){let data;try{data=await r.json()}catch(_){}const error=Error(typeof data?.detail==='string'?data.detail:'Request failed. Check connection and retry.');error.status=r.status;throw error}const value=await r.json();if(body)window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Saved on server'}));return value}catch(e){if(body)window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Save not confirmed · retry'}));if(e.name==='AbortError')throw Error('Request timed out. Use Status before retrying; the server may have saved it.');if(e instanceof TypeError)throw Error('Connection lost. Use Status or Retry when the server is reachable.');throw e}finally{clearTimeout(timeout)}
 }
 function localPersist(next){localStorage.setItem('sgpal-ui-v1',JSON.stringify(next));saved=next}
 async function adopt(){
@@ -127,7 +129,7 @@ register('16request','Friend request',4,()=>{base('FRIEND REQUEST');sprite('otte
 register('17','Visit a friend',4,()=>{base('KAYA\'S BTO','VISIT');room(false);sprite('otter',147,109,62);frame(12,153,296,34,C.paper);text('KAYA SAYS HELLO!',25,163);rail([['Greet',()=>nav('17greet')],['Leave',()=>nav('16')]])},{focus:'Greet > Leave',click:'Greet opens preset guestbook choices; no room editing.',back:'Leave returns to Friends.',layout:'Friend room snapshot; greeting overlay12,153 296x34.',states:'Sample house only. Real snapshot requires permission and excludes CultureDex scan photos.',motion:'Friend sprite can idle locally; does not imply real-time presence.'});
 register('17greet','Leave a greeting',4,()=>{base('LEAVE A GREETING');row('LOVE YOUR LITTLE HOME!',38,()=>unavailable('Guestbook integration'));row('THANKS FOR HAVING ME!',82,()=>unavailable('Guestbook integration'));row('SEE YOU AROUND!',126,()=>unavailable('Guestbook integration'));rail([['Back',()=>nav('17')]])},{focus:'Three preset greetings > Back',click:'Future sends selected sticker/message once with confirmation. No unrestricted chat.',back:'Friend visit.',layout:'Three296x30 rows and Back.',states:'Sending must show pending, sent or failed. Prototype sends nothing.',motion:'One sticker pop only after successful send.'});
 register('18','Settings and save',1,()=>{base('SETTINGS');row('SAVE AND CONNECTION',34,()=>nav('18status'));row('SOUND: '+(state().sound?'ON':'OFF'),70,sound);row('PAIRING AND PRIVACY',106,()=>nav('18pair'));row('ROTARY HELP',142,()=>nav('help'));rail([['Back',()=>nav('04menu')]])},{focus:'Save/status > Sound > Pairing/privacy > Help > Back',click:'Sound saves local preference. Other rows open details.',back:'Pocket menu.',layout:'Four296x30 rows; Back rail.',states:'Browser cannot reliably read Wi-Fi SSID. OS-managed network info shown explicitly.',motion:'Optional click sound only when enabled.'});
-register('18status','Save and connection',1,()=>{base('SAVE AND CONNECTION');lines([backend?'SAVE: LOCAL SERVER':'SAVE: THIS BROWSER','CLOUD SYNC: NOT CONNECTED','NETWORK: '+(navigator.onLine?'BROWSER ONLINE':'OFFLINE'),'WI-FI: MANAGED IN OS'],16,47);rail([['Back',()=>nav('18')]])},{focus:'Back',click:'Read actual save adapter and browser network signal.',back:'Settings.',layout:'Four status lines.',states:'Browser online is not proof AI/cloud reachable. Remote unavailable never reported synced.',motion:'No perpetual sync indicator.'});
+register('18status','Save and connection',1,()=>{base('SAVE AND CONNECTION');lines([backend?'SAVE: PRIVATE SERVER':'SAVE: THIS BROWSER',backend?(window.SGPalAccount?.session?.signed_in?'ACCOUNT: SIGNED IN':'GUEST: PRIVATE SAVE'):'LOCAL PROTOTYPE SAVE','NETWORK: '+(navigator.onLine?'BROWSER ONLINE':'OFFLINE'),'WI-FI: MANAGED IN OS'],16,47);rail([['Back',()=>nav('18')]])},{focus:'Back',click:'Read actual save adapter and browser network signal.',back:'Settings.',layout:'Four status lines.',states:'Browser online is not proof AI/cloud reachable. Remote unavailable never reported synced.',motion:'No perpetual sync indicator.'});
 register('18pair','Pairing and privacy',3,()=>{base('PAIRING AND PRIVACY');lines(['PAIRING: NOT CONNECTED','PHOTOS STAY HERE.','NO PUBLIC ROOM SHARING','PHONE ACCOUNT SYNC: LATER'],16,46);rail([['Back',()=>nav('18')]])},{focus:'Back',click:'Informational until authenticated cloud service exists.',back:'Settings.',layout:'Four policy/status lines.',states:'Prototype photos remain memory only; no third-party upload. LAN access is not authenticated cloud pairing.',motion:'None.'});
 register('18offline','Offline',3,()=>{base('YOU ARE OFFLINE');lines(['YOUR LOCAL SAVE IS SAFE.','EXPLORE YOUR BTO AND DEX.','SCANS NEED CONNECTION.','CLOUD SYNC IS NOT SET UP.'],16,44);rail([['Home',goHome],['Back',()=>nav('18')]])},{focus:'Home > Back',click:'Continue local experience.',back:'Settings.',layout:'Four lines.',states:'Future offline actions need durable operation IDs; no reward before validation.',motion:'Static offline icon, no error flashing.'});
 register('18pending','Sync pending',3,()=>{base('SYNC PENDING');lines(['2 LOCAL CHANGES WAITING.','YOUR LOCAL COPY IS SAVED.','RETRY WHEN CONNECTED.','SAMPLE FUTURE SYNC STATE'],16,46);rail([['Retry',()=>unavailable('Sync integration')],['Back',()=>nav('18')]])},{focus:'Retry > Back',click:'Future retries operation queue; not implemented in this prototype.',back:'Settings.',layout:'Four status lines.',states:'Do not upload capture photos by default. Server deduplicates operation/reward IDs.',motion:'Brief spinner only during real retry.'});
@@ -199,10 +201,11 @@ liveView('14more',()=>{base('ABOUT YOUR PAL');const personality={merlion:'CURIOU
 // Real game requests. Gallery never reaches these paths. Only the server can
 // change progress; pending IDs survive reload so lost responses can be checked.
 let photoPayload=null,activeRequest=null,gameResult=null,gameMessage='',gameBusy=false,requestView=0,correctionPage=0,storedPhoto=null;
-const pendingKey='sgpal-pending-operation-v1';
+let pendingKey='sgpal-pending-operation-v1';
+let lastRequestStatus=0;
 const newId=()=>crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
 function startScan(){photo=null;photoPayload=null;activeRequest=null;nav('05')}
-function rememberRequest(){try{localStorage.setItem(pendingKey,JSON.stringify({id:activeRequest.body.operation_id,path:activeRequest.path,...(['quests/answer','shop/purchase','room/place'].includes(activeRequest.path)?{body:activeRequest.body}:{})}))}catch(_){}}
+function rememberRequest(){try{localStorage.setItem(pendingKey,JSON.stringify({id:activeRequest.body.operation_id,path:activeRequest.path,revision:activeRequest.revision,...(['quests/answer','shop/purchase','room/place'].includes(activeRequest.path)?{body:activeRequest.body}:{})}))}catch(_){}}
 function forgetRequest(){try{localStorage.removeItem(pendingKey)}catch(_){}}
 function acceptResult(result){
  if(result.state)saved=result.state;gameResult=result;
@@ -223,9 +226,9 @@ function acceptResult(result){
 }
 async function runGameRequest(){
  if(gallery||gameBusy)return;if(!backend){unavailable('Run the FastAPI server');return}
- gameBusy=true;const token=++requestView;nav('live-working');rememberRequest();
- try{const result=await api(activeRequest.path,activeRequest.body);if(token===requestView&&!gallery)acceptResult(result);else if(result.state){saved=result.state;render()}}
- catch(e){if(token===requestView&&!gallery){gameMessage=e.message;detailPage=0;nav('live-request-error')}}
+ gameBusy=true;if(!activeRequest.revision)activeRequest.revision=saved.revision;const token=++requestView;nav('live-working');rememberRequest();
+ try{const result=await api(activeRequest.path,activeRequest.body,activeRequest.revision);if(token===requestView&&!gallery)acceptResult(result);else if(result.state){saved=result.state;render()}}
+ catch(e){if(token===requestView&&!gallery){lastRequestStatus=e.status||0;gameMessage=e.message;detailPage=0;nav('live-request-error')}}
  finally{gameBusy=false}
 }
 async function analysePhoto(){
@@ -239,14 +242,14 @@ async function retryRequest(){
  if(activeRequest){await runGameRequest();return}
  let pending;try{pending=JSON.parse(localStorage.getItem(pendingKey))}catch(_){}
  if(!pending){startScan();return}
- activeRequest=['quests/answer','shop/purchase','room/place'].includes(pending.path)&&pending.body?{path:pending.path,body:pending.body}:{path:'retry',body:{operation_id:pending.id}};await runGameRequest();
+ activeRequest=['quests/answer','shop/purchase','room/place'].includes(pending.path)&&pending.body?{path:pending.path,body:pending.body,revision:pending.revision}:{path:'retry',body:{operation_id:pending.id}};await runGameRequest();
 }
 async function checkRequest(){
  if(gameBusy)return;let pending;
  try{pending=activeRequest?{id:activeRequest.body.operation_id,path:activeRequest.path}:JSON.parse(localStorage.getItem(pendingKey))}catch(_){}
  if(!pending){nav('05');return}
  try{const result=await api('operations/'+pending.id);if(result.status==='pending'&&result.retryable&&activeRequest){await runGameRequest();return}acceptResult(result)}
- catch(e){gameMessage=e.message;detailPage=0;nav('live-request-error')}
+ catch(e){lastRequestStatus=e.status||0;gameMessage=e.message;detailPage=0;nav('live-request-error')}
 }
 async function confirmDiscovery(){
  if(gallery||gameBusy||!gameResult)return;
@@ -309,7 +312,7 @@ register('live-uncertain','Photo needs another look',1,()=>{
  gameRead('NOT SURE YET',(gameResult?.observation||'Try a clearer photo with more context.')+' No rewards were added.',[['Retry',()=>startScan()],['Correct',()=>nav('live-correction')],['Back',goHome]]);
 },{});
 register('live-request-error','Request needs attention',1,()=>{
- gameRead('CHECK NOT FINISHED',gameMessage,[['Retry',retryRequest],['Status',checkRequest],['Back',closeRequest]]);
+ gameRead('CHECK NOT FINISHED',gameMessage,[[lastRequestStatus===409?'Refresh':'Retry',lastRequestStatus===409?()=>refreshProgress(true):retryRequest],['Status',checkRequest],['Back',closeRequest]]);
 },{});
 register('live-reward','Saved game result',1,()=>{
  const reward=gameResult.reward||{xp:0,coins:0},quest=['verify','complete'].includes(gameResult.kind);
@@ -373,7 +376,7 @@ register('live-commerce-result','Decoration saved result',2,()=>{
  rail([['Items',()=>nav('12')],['Shop',()=>nav('11')],['Home',goHome]]);
 },{});
 
-liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS SAVE ON THIS','DEVICE. NO CLOUD SYNC.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
+liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS: PRIVATE SERVER.','SAME ACCOUNT, SAME SAVE.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
 
 function render(){if(!ready)return;browserLines=[];browserBody=null;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}if(!compact&&!gallery&&browserBody){hits=hits.filter(h=>!['Read','Next'].includes(h.label));focus=Math.min(focus,Math.max(0,hits.length-1))}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');if(!compact&&!gallery)renderBrowser();}
 // Browser presentation consumes these same screen choices and state. It never
@@ -406,11 +409,19 @@ setInterval(()=>{if(ready&&stream&&current==='05live'&&!document.hidden)render()
 window.SGPal={rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
 async function loadSaved(){
  try{
-  if(backend){saved=await api('state');catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}
+  if(backend){await window.SGPalAccount.boot();saved=await api('state');pendingKey='sgpal-pending-operation-v2:'+saved.owner_id;catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}
   else{const raw=localStorage.getItem('sgpal-ui-v1');saved=raw?{...empty(),...JSON.parse(raw)}:empty();if(!names[saved.species]||typeof saved.adopted!=='boolean')throw Error('Invalid save')}
-  if(!(saved.adopted&&await resumeRequest()))nav(saved.adopted?'04':'01');
+  window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Saved on server'}));if(!(saved.adopted&&await resumeRequest()))nav(saved.adopted?'04':'01');
  }catch(e){nav('saveerror')}
 }
+async function refreshProgress(review=false){
+ if(!backend||gameBusy||saving||gallery||!ready)return;
+ try{const latest=await api('state');if(latest.owner_id!==saved.owner_id){window.SGPalAccount.changed();return}const changed=latest.revision!==saved.revision;saved=latest;if(review){forgetRequest();activeRequest=null;nav(saved.adopted?'04':'01')}else if(changed)render();window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Saved on server'}))}
+ catch(_){window.dispatchEvent(new CustomEvent('sgpal:save-status',{detail:'Refresh failed · retry'}))}
+}
+window.addEventListener('sgpal:refresh',()=>refreshProgress(true));
+setInterval(()=>{if(!document.hidden&&['04','07','09','11','12','13'].includes(current))refreshProgress()},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshProgress()});
 async function init(){
  resize();for(const key of ['room','merlion','otter','mynah']){assets[key]=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src='assets/'+key+'.png'})}
  Object.values(screens).filter(s=>!s.id.startsWith('live-')).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).forEach(s=>{const op=document.createElement('option');op.value=s.id;op.textContent=s.id+' · '+s.title+' (phase '+s.phase+')';document.getElementById('scene').append(op)});

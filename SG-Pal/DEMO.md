@@ -108,8 +108,10 @@ firewall if prompted. Guest Wi-Fi/client isolation may block access. No physical
 phone reachability was verified here. Stop the listener with Ctrl+C afterward.
 
 Bind only the trusted LAN address. Do not port-forward, tunnel publicly or expose
-this single-user server to the internet: visitors share access to its progress
-and photos. No firewall changes, public hosting or Pi configuration were made.
+the development server to the internet. Browser saves are now isolated by secure
+sessions; real account sign-in needs the HTTPS/SMTP setup in [ACCOUNTS.md](ACCOUNTS.md).
+The older shared save requires explicit import. No firewall changes, public hosting
+or Pi configuration were made.
 
 ## Validation for this stage
 

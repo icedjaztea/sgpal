@@ -29,9 +29,10 @@ this renderer to the existing raw SPI display, GPIO and CSI camera is still
 pending; the original `python app.py --pi` hardware runtime remains available.
 
 For a phone on the same trusted LAN, replace `--host 127.0.0.1` with
-`--host 0.0.0.0`, then visit `http://<computer-or-pi-IP>:8000`. All visitors to
-that server share one device save. Phone camera access over ordinary LAN HTTP
-may be unavailable; use the photo picker, or configure HTTPS.
+`--host 0.0.0.0`, then visit `http://<computer-or-pi-IP>:8000`. Each browser now has a private guest save. For account sign-in and synchronization,
+use one HTTPS deployment and follow [ACCOUNTS.md](ACCOUNTS.md). Phone camera access
+over ordinary LAN HTTP may be unavailable; use the photo picker. Do not expose the
+development server publicly.
 
 Working: Merlion/Otter/Mynah adoption and saved BTO home, shared input,
 photo capture/upload, real OpenAI recognition, catalogue correction/reassessment,
@@ -360,3 +361,7 @@ For the two-minute browser presentation and failure fallbacks, see [DEMO.md](DEM
 
 The browser now opens as a responsive full-window game. Use `/?kiosk=1` for the
 original 320 × 240 compact layout; both share the same progress and backend.
+
+### Browser accounts and synchronization
+
+Browser saves are now private per guest/account. Optional **Save my progress** uses Supabase email magic links; provider configuration is required for real login. See [ACCOUNTS.md](ACCOUNTS.md) for exact setup, persistent hosting, conflict handling and the explicit one-time import of previous shared saves. The original shared files are preserved but never assigned automatically. Laptop and phone must use the same server to synchronize.

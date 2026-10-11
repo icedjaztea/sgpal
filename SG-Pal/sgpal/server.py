@@ -4,6 +4,10 @@ Adoption/preferences have their own file. Existing progress is read through the
 shared Store and is never rewritten by UI operations or design previews.
 """
 import json
+import asyncio
+import time
+import hashlib
+import secrets
 import base64
 import binascii
 import sqlite3
@@ -14,6 +18,8 @@ from threading import Lock
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
+from filelock import FileLock, Timeout
+from sgpal import accounts
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -52,8 +58,14 @@ class Sound(BaseModel):
     enabled: bool
 
 
+def data_dir():
+    identity=accounts.CURRENT.get()
+    if identity is None: raise RuntimeError("Player context required")
+    return DATA / "players" / identity["owner"]
+
+
 def read_profile():
-    path = DATA / "profile.json"
+    path = data_dir() / "profile.json"
     if not path.exists():
         return SavedProfile(species="merlion", name="Kopi")
     try:
@@ -65,45 +77,94 @@ def read_profile():
 def read_state():
     profile = read_profile()
     try:
-        game = GameStore(DATA)
-        progress = game.state() if game.path.exists() else legacy_progress(DATA)
+        game = GameStore(data_dir())
+        progress = game.state() if game.path.exists() else legacy_progress(data_dir())
     except (RuntimeError, OSError, ValueError, TypeError, sqlite3.Error, OverflowError) as exc:
         raise HTTPException(503, "Progress could not be read. Existing file preserved.") from exc
-    return {**profile.model_dump(), "xp": progress["xp"], "coins": progress.get("coins", 0),
+    result = {**profile.model_dump(), "xp": progress["xp"], "coins": progress.get("coins", 0),
             "level": 1 + progress["xp"] // 50,
             "discoveries": list(progress["log"]), "log": progress["log"],
             "quests": list(progress["log"]), "completed": progress["completed"],
             "active": progress["active"], "quest_details": progress.get("quest_details", {}), "inventory": progress.get("inventory", []), "room": progress.get("room", {})}
+    result['revision']=hashlib.sha256(json.dumps(result,sort_keys=True).encode()).hexdigest()
+    identity=accounts.CURRENT.get()
+    result['owner_id']=identity['owner'] if identity else None
+    return result
 
 
 def save_profile(profile):
     try:
-        atomic_json(DATA / "profile.json", profile.model_dump())
+        atomic_json(data_dir() / "profile.json", profile.model_dump())
     except OSError as exc:
         raise HTTPException(503, "Save failed. Retry after checking device storage.") from exc
 
 
 @app.middleware("http")
-async def same_origin_writes(request: Request, call_next):
-    if request.method == "POST":
-        try:
-            if int(request.headers.get("content-length", "0")) > 9 * 1024 * 1024:
-                return JSONResponse({"detail": "Photo request too large. Use a photo under 6 MB."}, status_code=413)
-        except ValueError:
-            return JSONResponse({"detail": "Invalid request size."}, status_code=400)
-        origin = request.headers.get("origin")
-        if origin and origin != str(request.base_url).rstrip("/"):
-            return JSONResponse({"detail": "Cross-origin writes are not allowed."}, status_code=403)
-    response = await call_next(request)
-    if request.url.path.startswith("/api/"):
-        response.headers.setdefault("Cache-Control", "no-store")
+async def private_sessions(request: Request, call_next):
+    # No URL/body owner ID grants access. Even photo UUIDs require this session.
+    if not request.url.path.startswith('/api/'):
+        response=await call_next(request)
+        response.headers['Referrer-Policy']='no-referrer'
+        return response
+    context=None;lock=None
+    try:
+        store=accounts.Sessions(DATA)
+        identity,fresh=store.resolve(request.cookies.get(accounts.COOKIE))
+        context=accounts.CURRENT.set(identity)
+        if request.method=='POST':
+            if int(request.headers.get('content-length','0'))>9*1024*1024:
+                raise HTTPException(413,'Photo request too large. Use a photo under 6 MB.')
+            origin=request.headers.get('origin')
+            if origin and origin!=str(request.base_url).rstrip('/'):
+                raise HTTPException(403,'Cross-origin writes are not allowed.')
+            if fresh or not secrets.compare_digest(request.headers.get('x-sgpal-csrf','').encode(),identity['csrf'].encode()):
+                raise HTTPException(403,'Session check failed. Reload before saving.')
+            if request.headers.get('x-sgpal-owner')!=identity['owner']:
+                raise HTTPException(409,'Player session changed. Reload before saving.')
+            if request.url.path not in ('/api/scan','/api/correct','/api/retry'):
+                directory=data_dir();directory.mkdir(parents=True,exist_ok=True,mode=0o700)
+                lock=FileLock(str(directory/'.write.lock'),thread_local=False)
+                deadline=time.monotonic()+20
+                while True:
+                    try:
+                        lock.acquire(timeout=0)
+                        break
+                    except Timeout:
+                        if time.monotonic()>deadline: raise HTTPException(503,'Another save is still running. Retry shortly.')
+                        await asyncio.sleep(.025)
+                with store.db() as db: store.row(db)
+            if request.url.path in ('/api/adopt','/api/sound','/api/room/place','/api/quests/activate'):
+                replay=False
+                if request.url.path=='/api/room/place':
+                    body=await request.json()
+                    if not isinstance(body,dict): raise HTTPException(422,'Expected a placement object.')
+                    if GameStore(directory).path.exists():
+                        try:replay=GameStore(directory).operation(str(body.get('operation_id')))['kind']=='place'
+                        except GameError:pass
+                if not replay and request.headers.get('if-match')!=read_state()['revision']:
+                    raise HTTPException(409,'Progress changed in another tab or device. Refresh progress, then review your choice again.')
+        response=await call_next(request)
+        if fresh:accounts.cookie(response,fresh,request)
+    except HTTPException as exc:
+        response=JSONResponse({'detail':exc.detail},status_code=exc.status_code)
+    except (sqlite3.Error,OSError,ValueError):
+        response=JSONResponse({'detail':'Session or save unavailable. No new success is confirmed; reload and retry.'},status_code=503)
+    finally:
+        if lock:lock.release()
+        if context is not None:accounts.CURRENT.reset(context)
+    response.headers['Cache-Control']='private, no-store'
+    response.headers['Referrer-Policy']='no-referrer'
+    response.headers['X-Content-Type-Options']='nosniff'
     return response
+
+
+app.include_router(accounts.router(lambda:DATA))
 
 
 @app.get("/api/status")
 def status():
     return {"mode": "local-browser", "ai_ready": credential_present(), "pi_camera_ready": False,
-            "cloud_sync_ready": False, "progress_source": "gameplay.sqlite3" if GameStore(DATA).path.exists() else "progress.json"}
+            "cloud_sync_ready": False, "account_sync_configured": accounts.provider.ready, "progress_source": "gameplay.sqlite3" if GameStore(data_dir()).path.exists() else "progress.json"}
 
 
 @app.get("/api/catalogue")
@@ -127,10 +188,10 @@ def adopt(body: Profile):
     with LOCK:
         before = read_state()
         if before["adopted"]:
-            raise HTTPException(409, "A Pal is already adopted on this device.")
+            raise HTTPException(409, "A Pal is already adopted in this save.")
         profile = read_profile().model_copy(update={**body.model_dump(), "adopted": True})
         save_profile(profile)
-        return {**before, **profile.model_dump()}
+        return read_state()
 
 
 @app.post("/api/sound")
@@ -139,7 +200,7 @@ def sound(body: Sound):
         before = read_state()
         profile = read_profile().model_copy(update={"sound": body.enabled})
         save_profile(profile)
-        return {**before, **profile.model_dump()}
+        return read_state()
 
 
 def credential_present():
@@ -191,7 +252,7 @@ def game_store():
     if not read_profile().adopted:
         raise HTTPException(409, "Adopt your Pal first.")
     read_state()  # Validate existing progress before migration or any AI work.
-    return GameStore(DATA)
+    return GameStore(data_dir())
 
 
 def photo_bytes(encoded):
