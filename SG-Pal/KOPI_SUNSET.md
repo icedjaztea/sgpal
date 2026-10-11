@@ -163,8 +163,9 @@ saves, logs, photos and test results are ignored by Git.
 
 ## Controls, design and hardware boundary
 
-The approved room/Merlion/Otter/Mynah art is unchanged. The shared canvas is exactly
-320 × 240 with integer enlargement, bitmap text and Kopi Sunset palette.
+The approved room/Merlion/Otter/Mynah art is unchanged. The compact canvas is exactly
+320 × 240 with bitmap text and the Kopi Sunset palette. The default browser
+presentation uses a responsive room canvas and readable HTML controls.
 Keyboard arrows/Enter/Space/Escape, touch focus-then-activate, and rotary events
 use one action system. No essential action needs a long press.
 

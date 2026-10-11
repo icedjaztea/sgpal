@@ -47,7 +47,7 @@ bundled or guaranteed to be recognised.
 | Time | Action and narration |
 | --- | --- |
 | 0:00–0:15 | Start → choose a Pal → Choose → Reroll if desired → Keep. “A Singapore companion with a little BTO home.” |
-| 0:15–0:45 | Scan → Upload the prepared menu → Analyse. “This photo goes to real AI; only a supported, confirmed discovery earns rewards.” Read the explanation; Read pages if needed; Yes only if correct. |
+| 0:15–0:45 | Scan → Upload the prepared menu → Analyse. “This photo goes to real AI; only a supported, confirmed discovery earns rewards.” Read the explanation (scroll if needed); Yes only if correct. |
 | 0:45–1:00 | Dex → Info, briefly show the saved entry/photo, then Quest. “Culture XP measures learning; Kopi Coins are spendable.” |
 | 1:00–1:20 | Read the quest → Answer → Not yet. Show it remains active. Read the prepared menu, work out kopi-O or kopi-C, and practise the order. Answer → Yes, I did it. “Completion is self-reported, once.” |
 | 1:20–1:40 | Home → Menu → Shop → Buy window plant → Confirm. First discovery + quest earn 15 coins; plant costs 8; 7 remain and XP stays 35. |
@@ -65,8 +65,8 @@ Do not claim a quest completed just to advance the demo; actually do its action.
 - Rehearse the prepared image and controls: arrows turn, Enter/Space select,
   Escape returns; touch or click once to activate in the responsive browser. Compact mode uses
   focus-then-activate.
-- Use the normal page on laptop/phone portrait. Selected choices are terracotta
-  with a pointer. Room art preserves its proportions with nearest-neighbour scaling.
+- Use the normal page on laptop/phone portrait. Selected choices are terracotta with visible keyboard focus
+  (compact mode also has a pointer). Room art preserves its proportions with nearest-neighbour scaling.
 - Check the saved photo and menu are locally available; prepare the internet fallback.
 - Close the design gallery before live play. Gallery labels identify sample data.
 
