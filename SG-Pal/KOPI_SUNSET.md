@@ -163,8 +163,9 @@ saves, logs, photos and test results are ignored by Git.
 
 ## Controls, design and hardware boundary
 
-The approved room/Merlion/Otter/Mynah art is unchanged. The shared canvas is exactly
-320 × 240 with integer enlargement, bitmap text and Kopi Sunset palette.
+The approved room/Merlion/Otter/Mynah art is unchanged. The compact canvas is exactly
+320 × 240 with bitmap text and the Kopi Sunset palette. The default browser
+presentation uses a responsive room canvas and readable HTML controls.
 Keyboard arrows/Enter/Space/Escape, touch focus-then-activate, and rotary events
 use one action system. No essential action needs a long press.
 
@@ -225,3 +226,41 @@ lost purchase response/reload, touch placement, insufficient funds, replacement
 and saved room reload. Existing onboarding/mobile/gallery checks also pass.
 No new live AI test was needed for this stage: recognition code is unchanged,
 and test coins come from discovery/quest transactions with injected recognition.
+
+## Responsive browser presentation
+
+The default `/` URL is now a full-window browser game. Approved room and Pal art
+remain nearest-neighbour pixel canvases with their original proportions. HTML
+provides the HUD (identity, level, XP and coins), direct Home/Scan/CultureDex/
+Quests/Shop navigation, readable explanations, buttons and scrollable panels.
+Desktop uses a large room and adjacent panel; phone portrait uses bottom navigation
+and task sheets; short landscape windows use a split view. The shell uses `dvh`
+and safe-area insets, with a `vh` fallback. Fullscreen is optional and user-triggered,
+with an Exit fullscreen button; unsupported or rejected fullscreen stays usable.
+
+`/?kiosk=1` explicitly preserves the native 320 × 240 renderer and rotary contract.
+A small viewport never selects compact mode automatically. Both URLs read the same
+server save. Do not run two servers on one save merely to change layouts.
+
+`sgpal/web/browser.js` and `browser.css` are presentation adapters. `app.js` remains
+the owner of navigation, state, request/retry identities and gameplay actions.
+The browser receives the existing screen choices and calls those same actions.
+Long story/quest text is shown in full with scrolling instead of bitmap pagination;
+compact pagination remains intact. Shared `room()`/`decoration()` drawing paints
+the browser art canvas, including owned placements. No economy, AI or persistence
+logic is duplicated in the responsive layer; backend routes and saves are unchanged.
+
+Touch/mouse activates an HTML control in one tap/click. Tab and Enter work natively;
+arrows move between screen actions; Escape and visible Back/Close actions return.
+Reduced-motion disables decorative animation/transitions. Controls & privacy also
+links to compact mode and the explicitly labelled, isolated design gallery.
+
+Validation: 62 backend tests and both Chrome browser suites pass. The responsive
+suite exercises touch onboarding/naming, keyboard gameplay, upload/recognition
+fixtures, confirmation, CultureDex, Not yet/Yes, rewards, purchase, placement,
+reload, failed requests and retry. It checks screenshots at 1440×900, 1920×1080,
+1280×720, 768×1024, 390×844, 320×568 and 844×390, plus compact mode, fullscreen exit,
+unavailable fullscreen, camera denial and gallery isolation. Test screenshots
+remain under ignored `test-results/` and visibly identify simulated recognition.
+AI tests use injected fixtures, not new live provider calls. No physical phone,
+Safari, Pi, GPIO, display driver or kiosk service was tested or changed.

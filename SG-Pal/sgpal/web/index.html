@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#29334a"><title>SG Pal · Kopi Sunset</title>
-<link rel="stylesheet" href="style.css"></head>
-<body><main>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="browser.css"></head>
+<body><main id="compact-shell">
 <header class="surround"><p class="eyebrow">SG PAL / KOPI SUNSET</p><h1>A little home.<br>A whole neighbourhood.</h1><p>Your Singapore companion · 320 × 240</p></header>
 <section class="device" aria-label="SG Pal handheld screen"><canvas width="320" height="240" id="screen" tabindex="0" aria-label="SG Pal screen"></canvas></section>
 <p id="mode" class="surround" role="status"></p>
@@ -13,4 +13,30 @@
 <p class="hint surround">Analyse sends your photo to OpenAI. Discoveries and photos save on this device. Mark quests Done when you finish; no photo check is required. Camera needs HTTPS or localhost on this device. On a phone visiting a laptop over HTTP, use Upload. Cloud sync and social services are not connected.</p>
 <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" hidden>
 <video id="camera" playsinline autoplay muted hidden></video>
-</main><script src="app.js"></script></body></html>
+</main>
+<div id="browser-shell" hidden>
+  <header class="game-hud">
+    <a id="game-brand" class="game-brand" href="/" aria-label="SG Pal home">SG<span>PAL</span><small>A LITTLE SINGAPORE</small></a>
+    <div class="pal-identity"><img id="hud-pet" alt=""><div><strong id="hud-name">Your new neighbour</strong><span id="hud-level">Make a little home</span></div></div>
+    <div class="hud-stat xp-stat"><span class="mobile-level" id="hud-mobile-level"></span><span>Culture XP</span><strong id="hud-xp">0</strong><progress id="hud-progress" max="50" value="0" aria-label="Progress toward next level"></progress></div>
+    <div class="hud-stat coin-stat"><span>Kopi Coins</span><strong id="hud-coins">0</strong></div>
+    <button id="fullscreen" type="button" hidden>Fullscreen</button>
+  </header>
+  <nav id="game-nav" aria-label="Game navigation"></nav>
+  <main class="game-workspace">
+    <section class="room-stage" aria-label="Your BTO room">
+      <div class="room-heading"><span class="eyebrow">YOUR LITTLE CORNER OF SINGAPORE</span><h1 id="room-title">A home for your Pal.</h1></div>
+      <div class="room-art"><canvas id="room-art" width="320" height="168" aria-label="Your Pal in a cosy Singapore BTO room"></canvas></div>
+      <div class="room-caption"><span id="room-caption">Small discoveries. A world of stories.</span><button id="decorate-shortcut" hidden>Decorate room</button></div>
+    </section>
+    <section id="game-panel" class="game-panel" aria-labelledby="panel-title" tabindex="-1">
+      <div class="panel-top"><span id="panel-kicker" class="eyebrow">WELCOME, NEIGHBOUR</span><button id="panel-close" aria-label="Close panel" hidden>Close</button></div>
+      <h2 id="panel-title">Hello, Singapore.</h2>
+      <div id="panel-media"></div><div id="panel-copy"></div>
+      <div id="game-actions" aria-label="Screen actions"></div>
+      <p id="browser-status" role="status"></p>
+      <details class="browser-help"><summary>Controls &amp; privacy</summary><p>Tap or click a button to select. Tab moves between controls; Enter selects; Escape goes back. Arrow keys also move through game choices.</p><p>Analyse sends your photo to OpenAI. Photos and progress stay on this server. Quests are self-reported. Camera needs HTTPS or device-local localhost; use Upload on ordinary LAN HTTP.</p><a href="?kiosk=1">Open compact 320 × 240 mode</a><p><button type="button" onclick="SGPal.preview('01')">Design previews · sample data</button></p></details>
+    </section>
+  </main>
+</div>
+<script src="browser.js"></script><script src="app.js"></script></body></html>

@@ -2,7 +2,9 @@
 (() => {
 'use strict';
 const C={paper:'#f7e8ca',ink:'#29334a',wood:'#a66d51',terra:'#d98169',jade:'#6f9e83',gold:'#e7ba62',cream:'#fff5df',muted:'#b7a78d'};
-const canvas=document.getElementById('screen'),ctx=canvas.getContext('2d');
+const canvas=document.getElementById('screen');let ctx=canvas.getContext('2d');
+const compact=new URLSearchParams(location.search).get('kiosk')==='1';
+let browserLines=[],browserBody=null,drawingControl=false;
 ctx.imageSmoothingEnabled=false;
 // Original compact bitmap alphabet: 5x7 glyphs at 2x = 10x14px, 12px advance.
 const glyphs={
@@ -25,14 +27,14 @@ const mainIds=['01','02','03','04','05','06','07','08','09','10','11','12','13',
 const audit=[];
 function rect(x,y,w,h,col){ctx.fillStyle=col;ctx.fillRect(x,y,w,h)}
 function frame(x,y,w,h,fill=C.cream,border=C.ink){rect(x,y,w,h,border);rect(x+2,y+2,w-4,h-4,fill)}
-function text(s,x,y,col=C.ink,scale=2){s=String(s).toUpperCase();const w=s.length*6*scale-scale;if(x<0||x+w>320||y<0||y+7*scale>240)audit.push({screen:current,s,x,y,w});ctx.fillStyle=col;[...s].forEach((ch,i)=>(glyphs[ch]||glyphs['?']).forEach((row,ry)=>[...row].forEach((bit,rx)=>{if(bit==='1')ctx.fillRect(x+(i*6+rx)*scale,y+ry*scale,scale,scale)})))}
+function text(s,x,y,col=C.ink,scale=2){if(!drawingControl&&y>=24&&y<194)browserLines.push(String(s));s=String(s).toUpperCase();const w=s.length*6*scale-scale;if(x<0||x+w>320||y<0||y+7*scale>240)audit.push({screen:current,s,x,y,w});ctx.fillStyle=col;[...s].forEach((ch,i)=>(glyphs[ch]||glyphs['?']).forEach((row,ry)=>[...row].forEach((bit,rx)=>{if(bit==='1')ctx.fillRect(x+(i*6+rx)*scale,y+ry*scale,scale,scale)})))}
 function center(s,y,col=C.ink,scale=2){text(s,Math.floor((320-(s.length*6-1)*scale)/2),y,col,scale)}
 function lines(arr,x=16,y=48,col=C.ink){arr.forEach((v,i)=>text(v,x,y+i*22,col))}
 function pointer(x,y){for(let i=0;i<5;i++)rect(x+i,y+i,1,9-i*2,C.ink)}
 function header(title,right=''){rect(0,0,320,24,C.ink);text(title,8,5,C.paper);if(right)text(right,312-(right.length*12-2),5,C.paper)}
 function footer(hint='TURN / PRESS'){rect(0,224,320,16,C.ink);center(hint,225,C.paper)}
 function base(title,right=''){rect(0,0,320,240,C.paper);header(title,right);footer()}
-function button(label,x,y,w,h,fn,{disabled=false}={}){const i=hits.length,sel=i===focus;hits.push({label,x,y,w,h,fn,disabled});frame(x,y,w,h,disabled?C.muted:sel?C.terra:C.cream);if(sel)pointer(x+5,y+Math.floor((h-9)/2));text(label,x+Math.floor((w-(label.length*12-2))/2)+(sel?3:0),y+Math.floor((h-14)/2));}
+function button(label,x,y,w,h,fn,{disabled=false}={}){const i=hits.length,sel=i===focus;hits.push({label,x,y,w,h,fn,disabled});frame(x,y,w,h,disabled?C.muted:sel?C.terra:C.cream);if(sel)pointer(x+5,y+Math.floor((h-9)/2));drawingControl=true;text(label,x+Math.floor((w-(label.length*12-2))/2)+(sel?3:0),y+Math.floor((h-14)/2));drawingControl=false;}
 function rail(options){const gap=4,w=Math.floor((304-gap*(options.length-1))/options.length);options.forEach((o,i)=>button(o[0],8+i*(w+gap),194,w,28,o[1]));}
 function row(label,y,fn,sub){button(label,12,y,296,30,fn);if(sub)text(sub,18,y+33,C.wood)}
 function sprite(species,x,y,size=64){const a=assets[species];if(a){const r=Math.min(size/a.width,size/a.height);const w=Math.round(a.width*r),h=Math.round(a.height*r);ctx.drawImage(a,x+Math.floor((size-w)/2),y+Math.floor((size-h)/2),w,h)}}
@@ -139,6 +141,7 @@ register('blocked','Feature not connected',2,()=>{base('NOT CONNECTED YET');line
 function liveView(id,draw){const sampleDraw=screens[id].draw;screens[id].draw=()=>gallery?sampleDraw():draw()}
 function wrapWords(value,width=24){const result=[];let line='';for(const word of String(value).toUpperCase().split(/\s+/).flatMap(w=>w.match(new RegExp('.{1,'+width+'}','g'))||[])){if((line+' '+word).trim().length>width&&line){result.push(line);line=''}line+=(line?' ':'')+word}if(line)result.push(line);return result}
 function readPage(title,body,backTo,extra=[]){
+ browserBody=body;
  const all=wrapWords(body),pages=Math.max(1,Math.ceil(all.length/6));detailPage%=pages;
  base(title.slice(0,20),pages>1?(detailPage+1)+'/'+pages:'');lines(all.slice(detailPage*6,detailPage*6+6),16,38);
  rail([...(pages>1?[['Next',()=>{detailPage=(detailPage+1)%pages;render()}]]:[]),...extra,['Back',()=>nav(backTo)]]);
@@ -275,6 +278,7 @@ function showStoredPhoto(url){
 }
 function photoImage(im){ctx.save();ctx.imageSmoothingEnabled=true;const ratio=Math.min(280/im.width,128/im.height);const w=Math.round(im.width*ratio),h=Math.round(im.height*ratio);ctx.drawImage(im,20+Math.floor((280-w)/2),32+Math.floor((128-h)/2),w,h);ctx.restore()}
 function gameRead(title,message,actions){
+ browserBody=message;
  const all=wrapWords(message),count=Math.max(1,Math.ceil(all.length/6));detailPage%=count;
  base(title.slice(0,20),count>1?(detailPage+1)+'/'+count:'');lines(all.slice(detailPage*6,detailPage*6+6),16,37);
  // Up to 3 actions fit the approved bottom rail. Text paging has a compact,
@@ -371,7 +375,22 @@ register('live-commerce-result','Decoration saved result',2,()=>{
 
 liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS SAVE ON THIS','DEVICE. NO CLOUD SYNC.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
 
-function render(){if(!ready)return;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');}
+function render(){if(!ready)return;browserLines=[];browserBody=null;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}if(!compact&&!gallery&&browserBody){hits=hits.filter(h=>!['Read','Next'].includes(h.label));focus=Math.min(focus,Math.max(0,hits.length-1))}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');if(!compact&&!gallery)renderBrowser();}
+// Browser presentation consumes these same screen choices and state. It never
+// calculates rewards, writes saves, or implements a second gameplay flow.
+function renderBrowser(){
+ const target=document.getElementById('room-art'),original=ctx;
+ try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,320,168);ctx.save();ctx.translate(0,-24);
+  let arrangement=saved.room;
+  if(current==='live-placement'&&selectedDecor){const slots=roomSlots.filter(s=>selectedDecor.slots.includes(s.id)),slot=slots[slotIndex%slots.length];arrangement={...saved.room};for(const id of Object.keys(arrangement))if(arrangement[id]===selectedDecor.id)delete arrangement[id];if(slot)arrangement[slot.id]=selectedDecor.id}
+  room(saved.adopted,arrangement);ctx.restore();
+ }finally{ctx=original}
+ window.SGPalBrowser.render({screen:current,title:screens[current].title,lines:browserLines,body:browserBody,choices:hits.map(({label,disabled})=>({label,disabled})),focus,saved,candidate,name:names[candidate][nameIndex],item:selectedDecor||shopItems[shopIndex%shopItems.length],shopItem:shopItems[shopIndex%shopItems.length],entry:selectedEntry,result:gameResult,photo:current==='live-photo'?storedPhoto:photo,stream,backend,busy:gameBusy||saving}, {
+  activate(i){focus=i;press()},select(i){focus=i;render()},
+  navigate(id){if(saving)return;if(gameBusy)requestView++;gallery=false;id==='05'?startScan():nav(id)},back,
+  paintItem(target,art){const old=ctx;try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;decoration(art,8,2)}finally{ctx=old}}
+ });
+}
 function resize(){const top=canvas.getBoundingClientRect().top+scrollY;const byHeight=Math.floor((innerHeight-top-24)/240);document.documentElement.style.setProperty('--scale',String(Math.max(1,Math.min(3,Math.floor((innerWidth-60)/320),byHeight))))}
 document.getElementById('left').onclick=()=>{canvas.focus();rotate(-1)};document.getElementById('right').onclick=()=>{canvas.focus();rotate(1)};document.getElementById('press').onclick=()=>{canvas.focus();press()};
 window.addEventListener('keydown',e=>{if(['SELECT','INPUT','TEXTAREA','SUMMARY','BUTTON'].includes(e.target.tagName))return;if(['ArrowLeft','ArrowUp','ArrowRight','ArrowDown','Enter',' ','Escape'].includes(e.key)){e.preventDefault();if(e.repeat&&['Enter',' '].includes(e.key))return;if(e.key==='Escape')back();else if(e.key==='Enter'||e.key===' ')press();else rotate(['ArrowLeft','ArrowUp'].includes(e.key)?-1:1)}});
@@ -379,12 +398,12 @@ canvas.addEventListener('click',e=>{const b=canvas.getBoundingClientRect(),x=(e.
 // Hardware adapter contract: one signed step per debounced encoder detent.
 window.addEventListener('sgpal:rotate',e=>rotate(Number(e.detail?.delta)||0));window.addEventListener('sgpal:press',press);
 document.getElementById('scene').onchange=e=>{requestView++;gallery=true;nav(e.target.value)};
-document.getElementById('live').onclick=()=>{gallery=false;photo=null;nav(saved.adopted?'04':'01')};
+document.getElementById('live').onclick=()=>{document.body.classList.remove('design-gallery');gallery=false;photo=null;nav(saved.adopted?'04':'01')};
 document.getElementById('photo').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>6*1024*1024||!['image/jpeg','image/png','image/webp'].includes(f.type)){lastCameraError='JPG/PNG/WEBP, MAX 6MB.';nav('05error');return}const token=mediaGeneration,url=URL.createObjectURL(f),im=new Image();im.onload=()=>{if(token!==mediaGeneration){URL.revokeObjectURL(url);return}if(im.width*im.height>24000000){URL.revokeObjectURL(url);lastCameraError='PHOTO TOO LARGE: MAX 24MP';nav('05error');return}const reader=new FileReader();reader.onload=()=>{if(token!==mediaGeneration)return;photo=im;photoPayload=String(reader.result).split(',')[1];nav('05photo')};reader.onerror=()=>{lastCameraError='PHOTO COULD NOT BE READ.';nav('05error')};reader.readAsDataURL(f);URL.revokeObjectURL(url)};im.onerror=()=>{URL.revokeObjectURL(url);if(token!==mediaGeneration)return;lastCameraError='PHOTO COULD NOT BE READ.';nav('05error')};im.src=url};
 window.addEventListener('resize',resize);window.addEventListener('pagehide',stopCamera);document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream){stopCamera();current='05';focus=0;render()}});
-if(new URLSearchParams(location.search).get('kiosk')==='1')document.body.classList.add('kiosk');
+if(compact)document.body.classList.add('kiosk');else{document.body.classList.add('browser-game');document.getElementById('browser-shell').hidden=false;canvas.tabIndex=-1;}
 setInterval(()=>{if(ready&&stream&&current==='05live'&&!document.hidden)render()},100);
-window.SGPal={rotate,press,back,preview(id){if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
+window.SGPal={rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
 async function loadSaved(){
  try{
   if(backend){saved=await api('state');catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}
@@ -397,5 +416,5 @@ async function init(){
  Object.values(screens).filter(s=>!s.id.startsWith('live-')).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).forEach(s=>{const op=document.createElement('option');op.value=s.id;op.textContent=s.id+' · '+s.title+' (phase '+s.phase+')';document.getElementById('scene').append(op)});
  ready=true;await loadSaved();
 }
-init().catch(()=>{ctx.fillStyle=C.paper;ctx.fillRect(0,0,320,240);text('ASSETS COULD NOT LOAD',16,80);text('USE THE LOCAL WEB SERVER',16,110)});
+init().catch(()=>{ctx.fillStyle=C.paper;ctx.fillRect(0,0,320,240);text('ASSETS COULD NOT LOAD',16,80);text('USE THE LOCAL WEB SERVER',16,110);if(!compact){document.getElementById('panel-title').textContent='The room could not load.';document.getElementById('panel-copy').textContent='Check the local server and try again. Your saved progress has not been changed.';const retry=document.createElement('button');retry.textContent='Retry loading';retry.onclick=()=>location.reload();document.getElementById('game-actions').replaceChildren(retry)}});
 })();

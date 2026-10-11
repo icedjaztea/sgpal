@@ -11,7 +11,7 @@ From the shared repository's `SG-Pal` directory, with the existing environment:
 SGPAL_DATA_DIR=./data/browser .venv/bin/python -m uvicorn sgpal.server:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000/ (normal enlarged browser experience).
+Open http://127.0.0.1:8000/ (responsive full-window browser game).
 http://127.0.0.1:8000/?kiosk=1 is the exact 320 × 240 layout, without browser framing.
 If the preview already runs, use it; do not start a second listener on that port.
 For a new checkout, follow the environment installation in KOPI_SUNSET.md.
@@ -47,7 +47,7 @@ bundled or guaranteed to be recognised.
 | Time | Action and narration |
 | --- | --- |
 | 0:00–0:15 | Start → choose a Pal → Choose → Reroll if desired → Keep. “A Singapore companion with a little BTO home.” |
-| 0:15–0:45 | Scan → Upload the prepared menu → Analyse. “This photo goes to real AI; only a supported, confirmed discovery earns rewards.” Read the explanation; Read pages if needed; Yes only if correct. |
+| 0:15–0:45 | Scan → Upload the prepared menu → Analyse. “This photo goes to real AI; only a supported, confirmed discovery earns rewards.” Read the explanation (scroll if needed); Yes only if correct. |
 | 0:45–1:00 | Dex → Info, briefly show the saved entry/photo, then Quest. “Culture XP measures learning; Kopi Coins are spendable.” |
 | 1:00–1:20 | Read the quest → Answer → Not yet. Show it remains active. Read the prepared menu, work out kopi-O or kopi-C, and practise the order. Answer → Yes, I did it. “Completion is self-reported, once.” |
 | 1:20–1:40 | Home → Menu → Shop → Buy window plant → Confirm. First discovery + quest earn 15 coins; plant costs 8; 7 remain and XP stays 35. |
@@ -63,9 +63,10 @@ Do not claim a quest completed just to advance the demo; actually do its action.
 - Check `/api/status`: `ai_ready: true` means configured, not a guarantee of quota,
   network availability or model correctness. Never display the key or credential file.
 - Rehearse the prepared image and controls: arrows turn, Enter/Space select,
-  Escape returns; touch a different choice to focus, then tap again to activate.
-- Use the normal page on laptop/phone portrait. Selected choices are terracotta
-  with a pointer. Keep browser zoom at 100% for predictable integer scaling.
+  Escape returns; touch or click once to activate in the responsive browser. Compact mode uses
+  focus-then-activate.
+- Use the normal page on laptop/phone portrait. Selected choices are terracotta with visible keyboard focus
+  (compact mode also has a pointer). Room art preserves its proportions with nearest-neighbour scaling.
 - Check the saved photo and menu are locally available; prepare the internet fallback.
 - Close the design gallery before live play. Gallery labels identify sample data.
 
@@ -121,8 +122,8 @@ and photos. No firewall changes, public hosting or Pi configuration were made.
   a synthetic browser stream. These are not physical camera tests.
 - Three pet species, suggested names, keyboard/shared rotary actions, touch
   onboarding, Back navigation, 57 gallery states and sample isolation.
-- Phone-sized viewports 320–390 px and laptop 1280×720, 1366×768, 1440×900;
-  canvas bounds, integer scaling and text audit. This is browser emulation,
+- Responsive phone/tablet/laptop viewports, including portrait and landscape;
+  room proportions, canvas bounds, safe scrolling and text audit. This is browser emulation,
   not testing on a physical phone or Safari.
 - No new live OpenAI call or physical Pi test. Actual photo recognition quality,
   internet latency, physical-phone camera/file picker and LAN reachability still
