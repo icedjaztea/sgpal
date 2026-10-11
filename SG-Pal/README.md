@@ -380,3 +380,6 @@ Focused UI check: `.venv/bin/python scripts/test_immersive_browser.py`. It uses 
 
 ### Singapore local finds
 Browser scan results use short Spotted / Singapore connection cards. Confident Singapore-related subjects outside the curated catalogue can be confirmed for 10 Culture XP and 5 Kopi Coins. Rewards are calculated on the server, once per AI-normalized subject key or identical photo; retries are transactional. Different images with inconsistent AI subject naming remain a limitation of this MVP (not perceptual image deduplication). Uncertain/unrelated results earn nothing. Local finds persist separately, appear in CultureDex, and do not create invented catalogue quests. Existing catalogue discoveries and honesty-based quests are unchanged. The SQLite update adds a table without rewriting existing saves.
+
+### Scan participation coin
+Each successfully completed, schema-valid AI scan now earns 1 Kopi Coin, including uncertain/unrelated results and deliberate repeat scans. This is a participation reward, not confirmation of cultural identification, and grants no XP. Capture alone, failed/invalid AI calls and corrections earn no coin. Retrying the same operation cannot pay twice. Confirmed first discoveries retain their separate 10 XP / 5 coin bonus. Existing saved results are not rewarded retroactively.

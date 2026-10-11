@@ -39,3 +39,5 @@ body.kiosk dialog{width:calc(100vw - 8px);max-height:calc(100dvh - 8px);padding:
 body.kiosk dialog h2{font-size:14px;margin:4px 0}body.kiosk dialog button{font-size:11px;min-height:28px;padding:4px 6px}body.kiosk dialog input{font-size:12px;padding:4px}body.kiosk #friends-dialog canvas{width:100%;height:auto;aspect-ratio:320/168}
 
 .scan-cards{display:grid;gap:12px}.scan-card{padding:12px 14px;background:#fff5df;border:2px solid #a66d51;box-shadow:3px 3px 0 #d8b590}.scan-card h3{font:700 15px ui-monospace,monospace;margin:0 0 8px;color:#82513c}.scan-card p{margin:0;line-height:1.5}.scan-reward-note{padding:10px;background:#dce7c9;border-left:4px solid #6f9e83;font-size:13px}
+
+.scan-coin{background:#e7ba62;border:2px solid #a66d51;padding:10px;font-weight:bold;margin:0}
