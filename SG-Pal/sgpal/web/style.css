@@ -2,3 +2,6 @@
 
 /* Preserve all 320 native pixels even on a narrow phone. */
 @media(max-width:339px){.device{padding:0;border:0;border-radius:0}main{padding-inline:0}.surround{padding-inline:8px}.controls{gap:4px}button{padding-inline:9px}}
+
+/* Keep the complete game visible on a typical laptop without fractional scaling. */
+@media(min-width:700px) and (max-height:850px){main{padding-top:12px}header{margin-bottom:12px}header .eyebrow{margin:4px}h1{font-size:26px;margin:6px}header>p:last-child{margin:6px}}

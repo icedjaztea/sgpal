@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             browser=pw.chromium.launch(channel=os.environ.get('SGPAL_BROWSER_CHANNEL','chrome'),headless=True)
             context=browser.new_context(viewport={'width':390,'height':844},has_touch=True)
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
-            page.goto(url);screen(page,'01');page.locator('#screen').focus()
+            page.goto(url);screen(page,'01');assert page.locator('#photo').get_attribute('capture') is None;page.locator('#screen').focus()
             choose(page,'Start');choose(page,'otter');choose(page,'Choose');choose(page,'Keep');screen(page,'04')
             choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo')
             page.route('**/api/scan',lambda route:route.fulfill(status=502,content_type='application/json',body='{"detail":"TEST: AI service unavailable. Retry."}'))
@@ -118,7 +118,20 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Next');choose(page,'Next');choose(page,'Buy');choose(page,'Confirm');screen(page,'live-commerce-result')
             assert info(page)['saved']['coins']==7 and info(page)['saved']['inventory']==['window_plant']
             page.screenshot(path=str(OUT/'shop-insufficient.png'))
-            choose(page,'Shop');choose(page,'Next');choose(page,'Next');choose(page,'Buy');choose(page,'Confirm');screen(page,'live-commerce-result')
+            choose(page,'Shop');choose(page,'Next');choose(page,'Next');choose(page,'Buy')
+            # Leave a slow committed purchase. The result must refresh the wallet
+            # without forcing the user away from Home; Status retains the receipt.
+            held=[]
+            page.route('**/api/shop/purchase',lambda route:held.append((route,route.fetch())))
+            choose(page,'Confirm');screen(page,'live-working')
+            page.wait_for_timeout(200)
+            assert len(held)==1
+            choose(page,'Back');screen(page,'04')
+            assert info(page)['saved']['coins']==7
+            held[0][0].fulfill(response=held[0][1])
+            page.unroute('**/api/shop/purchase')
+            page.wait_for_function('SGPal.inspect().saved.coins===2')
+            screen(page,'04');choose(page,'Status');screen(page,'live-commerce-result')
             assert info(page)['saved']['coins']==2
             choose(page,'Items');choose(page,'Kopi cup');screen(page,'live-placement');choose(page,'Save');screen(page,'live-commerce-result')
             assert info(page)['saved']['room']=={'window':'kopi_cup'}

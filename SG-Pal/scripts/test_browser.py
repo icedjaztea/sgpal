@@ -114,6 +114,18 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                     page.evaluate('SGPal.live()'); choose(page, 'Scan')
                     page.evaluate("()=>{navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(new Error('denied'),{name:'NotAllowedError'}))}")
                     choose(page, 'Camera'); screen(page, '05error'); choose(page, 'Back')
+                    # Unsupported files and missing devices remain recoverable via Upload.
+                    page.locator('#photo').set_input_files({'name':'photo.heic','mimeType':'image/heic','buffer':b'unsupported'})
+                    screen(page,'05error');assert 'Upload' in inspect(page)['choices'];choose(page,'Back')
+                    page.evaluate("()=>{navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(new Error('absent'),{name:'NotFoundError'}))}")
+                    choose(page,'Camera');screen(page,'05error');choose(page,'Back')
+                    # A synthetic browser camera stream exercises Capture and releases
+                    # tracks on Back. This is not a physical webcam/phone camera test.
+                    page.evaluate('''()=>{navigator.mediaDevices.getUserMedia=async()=>{const c=document.createElement('canvas');c.width=320;c.height=240;c.getContext('2d').fillRect(0,0,320,240);window.testCamera=c.captureStream(1);return window.testCamera}}''')
+                    choose(page,'Camera');screen(page,'05live');choose(page,'Capture');screen(page,'05photo')
+                    assert page.evaluate("testCamera.getTracks().every(t=>t.readyState==='ended')")
+                    choose(page,'Back');screen(page,'05')
+
                     page.locator('#photo').set_input_files(str(ROOT / 'sgpal/web/assets/otter.png'))
                     screen(page, '05photo'); choose(page, 'Analyse'); screen(page, 'live-request-error')
                     assert inspect(page)['saved']['xp'] == 0
@@ -161,6 +173,12 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
                 bounds=page.locator('#screen').bounding_box()
                 assert bounds['width'] % 320 == 0 and bounds['height'] % 240 == 0
+            for width,height in [(1280,720),(1366,768),(1440,900)]:
+                page.set_viewport_size({'width':width,'height':height})
+                bounds=page.locator('#screen').bounding_box()
+                assert bounds['y']+bounds['height']<=height,(width,height,bounds)
+                assert bounds['width'] % 320==0 and bounds['height'] % 240==0
+            page.screenshot(path=str(OUT/'laptop-fit.png'))
             page.goto(url+'/?kiosk=1'); screen(page, '04')
             bounds=page.locator('#screen').bounding_box()
             assert bounds['width']==320 and bounds['height']==240 and bounds['x']==0 and bounds['y']==0

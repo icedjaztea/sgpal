@@ -22,6 +22,9 @@ server shares its device save. Phone camera access usually needs HTTPS; Upload
 works on ordinary LAN HTTP. Default localhost is appropriate for a private demo.
 No public deployment, accounts or multi-user isolation are included.
 
+See [DEMO.md](DEMO.md) for the timed two-minute script, isolated rehearsal saves,
+camera/network fallbacks and trusted-LAN phone setup.
+
 ## Demo walkthrough
 
 1. Choose Merlion, Otter or Mynah; keep or reroll its suggested name.
