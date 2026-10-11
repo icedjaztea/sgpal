@@ -83,3 +83,10 @@ No display driver replacement, forced Git update, secret transfer, local player 
 Run `python3 pi_online.py run --touch` for on-screen Left, Select, Right and Back controls; tap a game choice once to activate. This leaves rotary and physical buttons disabled unless `--controls` is explicitly supplied. Browser URL: `https://sgpal.onrender.com/?kiosk=1&touch=1`.
 The touch controller must first appear as a Linux input device; SPI display output alone does not deliver taps. On this Pi, only HDMI input devices were detected. Touch driver/model identification and input forwarding remain required; do not guess GPIO wiring or change the working LCD driver.
 The Pi checkout now uses the public GitHub origin. After checking for local changes, update with `git fetch origin` and `git merge --ff-only origin/main`.
+
+### Mac keyboard remote (no touchscreen or GPIO)
+From a **Mac Terminal**, outside SSH:
+```
+ssh -t -i ~/.ssh/sgpal_codex jaz@sgpal.local 'cd ~/sgpal-online/SG-Pal && python3 pi_remote.py'
+```
+Left/Right (or A/D) selects, Enter confirms, Esc/B goes Back, Q closes the remote without stopping the game. Requires the existing display bridge. This uses SSH and the browser's loopback input connection; it opens no network listener. Run the bridge without `--touch` or `--controls` for the plain Pi display. Account recovery remains the separate hidden-prompt `pi_online.py restore` command.
