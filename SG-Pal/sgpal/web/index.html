@@ -16,30 +16,31 @@
 </main>
 <div id="browser-shell" hidden>
   <header class="game-hud">
-    <a id="game-brand" class="game-brand" href="/" aria-label="SG Pal home">SG<span>PAL</span><small>A LITTLE SINGAPORE</small></a>
-    <div class="pal-identity"><img id="hud-pet" alt=""><div><strong id="hud-name">Your new neighbour</strong><span id="hud-level">Make a little home</span></div></div>
-    <div class="hud-stat xp-stat"><span class="mobile-level" id="hud-mobile-level"></span><span>Culture XP</span><strong id="hud-xp">0</strong><progress id="hud-progress" max="50" value="0" aria-label="Progress toward next level"></progress></div>
-    <div class="hud-stat coin-stat"><span>Kopi Coins</span><strong id="hud-coins">0</strong></div>
-    <button id="fullscreen" type="button" hidden>Fullscreen</button>
-    <div class="account-strip"><span id="account-label">Starting private guest session…</span><span id="save-status" role="status">Loading progress…</span><button id="refresh-progress" type="button">Refresh progress</button><button id="friends-open" type="button">Friends</button><button id="account-open" type="button">Save my progress</button></div>
+    <div class="pal-identity"><img id="hud-pet" alt=""><div><strong id="hud-name">SG Pal</strong><span id="hud-level">Choose your Pal</span></div></div>
+    <div class="hud-stat xp-stat"><span id="hud-mobile-level" hidden></span><span>XP</span><strong id="hud-xp">0</strong><progress id="hud-progress" max="50" value="0" aria-label="Progress toward next level"></progress></div>
+    <div class="hud-stat coin-stat"><span>Kopi ◈</span><strong id="hud-coins">0</strong></div>
+    <button id="settings-open" type="button" aria-label="Profile and settings">☰</button>
   </header>
   <nav id="game-nav" aria-label="Game navigation"></nav>
   <main class="game-workspace">
     <section class="room-stage" aria-label="Your BTO room">
-      <div class="room-heading"><span class="eyebrow">YOUR LITTLE CORNER OF SINGAPORE</span><h1 id="room-title">A home for your Pal.</h1></div>
       <div class="room-art"><canvas id="room-art" width="320" height="168" aria-label="Your Pal in a cosy Singapore BTO room"></canvas></div>
-      <div class="room-caption"><span id="room-caption">Small discoveries. A world of stories.</span><button id="decorate-shortcut" hidden>Decorate room</button></div>
+      <div id="visit-banner" hidden><strong id="visit-label"></strong><span>Saved room · read-only</span><button id="return-home">Return Home</button></div>
     </section>
     <section id="game-panel" class="game-panel" aria-labelledby="panel-title" tabindex="-1">
       <div class="panel-top"><span id="panel-kicker" class="eyebrow">WELCOME, NEIGHBOUR</span><button id="panel-close" aria-label="Close panel" hidden>Close</button></div>
       <h2 id="panel-title">Hello, Singapore.</h2>
       <div id="panel-media"></div><div id="panel-copy"></div>
       <div id="game-actions" aria-label="Screen actions"></div>
-      <p id="browser-status" role="status"></p>
-      <details class="browser-help"><summary>Controls &amp; privacy</summary><p>Tap or click a button to select. Tab moves between controls; Enter selects; Escape goes back. Arrow keys also move through game choices.</p><p>Analyse sends your photo to OpenAI. Photos and progress stay on this server. Quests are self-reported. Camera needs HTTPS or device-local localhost; use Upload on ordinary LAN HTTP.</p><a href="?kiosk=1">Open compact 320 × 240 mode</a><p><button type="button" onclick="SGPal.preview('01')">Design previews · sample data</button></p></details>
     </section>
   </main>
+<p id="key-hint">← → Select · Enter Confirm · Esc Back</p>
 </div>
+<dialog id="settings-dialog" aria-labelledby="settings-heading"><button id="settings-close">Close</button><h2 id="settings-heading">Profile &amp; settings</h2>
+<div class="account-strip"><p id="account-label">Starting private guest session…</p><p id="save-status" role="status">Loading progress…</p><button id="refresh-progress">Refresh progress</button><button id="account-open">Save my progress</button><button id="fullscreen" hidden>Fullscreen</button></div>
+<p><button id="request-status" hidden>Request status</button><button id="pal-open">Say hello</button><button id="profile-open">Pal profile</button><button id="game-settings-open">Game settings</button><button id="decorate-open">Decorate room</button><button id="pocket-open">Pocket menu</button></p><p id="browser-status" role="status"></p>
+      <details class="browser-help"><summary>Controls &amp; privacy</summary><p>Tap or click a button to select. Tab moves between controls; Enter selects; Escape goes back. Arrow keys also move through game choices.</p><p>Analyse sends your photo to OpenAI. Photos and progress stay on this server. Quests are self-reported. Camera needs HTTPS or device-local localhost; use Upload on ordinary LAN HTTP.</p><a href="?kiosk=1">Open compact 320 × 240 mode</a><p><button type="button" onclick="SGPal.preview('01')">Design previews · sample data</button></p></details>
+</dialog>
 <dialog id="account-dialog" aria-labelledby="account-heading">
   <button id="account-close" type="button">Close</button><h2 id="account-heading">Save your progress</h2><p id="account-description"></p>
   <form id="account-email-form"><label for="login-email">Email address</label><input id="login-email" type="email" autocomplete="email" maxlength="254" required><button type="submit">Email me a sign-in link</button></form>

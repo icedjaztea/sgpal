@@ -367,3 +367,9 @@ original 320 × 240 compact layout; both share the same progress and backend.
 Browser saves are now private per guest/account. Optional **Save my progress** uses Supabase email magic links; provider configuration is required for real login. See [ACCOUNTS.md](ACCOUNTS.md) for exact setup, persistent hosting, conflict handling and the explicit one-time import of previous shared saves. The original shared files are preserved but never assigned automatically. Laptop and phone must use the same server to synchronize.
 
 Signed-in browser players can now open **Friends** to share a stable code, request/accept/decline, visit an accepted friend’s saved room, and remove friends. Visits are read-only; email login setup remains required. See [ACCOUNTS.md](ACCOUNTS.md#friends-saved-rooms).
+
+### Immersive browser presentation
+
+The default URL is now a full-window pixel room with a compact HUD and bottom toolbar. Features and onboarding open in game windows; Close returns home. Profile/account actions, save status, unfinished request recovery and help are under ☰. Arrow keys select controls, Enter confirms, and Escape closes/goes Back; input fields keep normal text editing. Friends visits use this same scene, labelled Visiting, with Return Home. `?kiosk=1` retains native 320 × 240 rendering.
+
+Focused UI check: `.venv/bin/python scripts/test_immersive_browser.py`. It uses temporary saves and the existing mock AI/email fixture, checks one desktop and one phone viewport, keyboard navigation, a persisted discovery, a friend visit and compact mode. No physical phone/Pi or live email validation is implied. The repository has no configured public deployment; hosting still requires one persistent FastAPI server with HTTPS and the account configuration in ACCOUNTS.md.

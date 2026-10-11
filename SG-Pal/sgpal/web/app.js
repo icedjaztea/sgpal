@@ -16,6 +16,7 @@ let candidate='merlion',nameIndex=0,lastCameraError='Camera unavailable.';
 const names={merlion:['Kopi','Splash','Bubbles'],otter:['Kaya','Pebble','Puddle'],mynah:['Pip','Chirpy','Milo']};
 const empty=()=>({version:1,adopted:false,species:'merlion',name:'Kopi',xp:0,coins:0,discoveries:[],quests:[],inventory:[],room:{},sound:false});
 let shopItems=[],roomSlots=[],shopIndex=0,slotIndex=0,selectedDecor=null;
+let visiting=null;
 let saved=empty(),catalogue=[],menuPage=0,dexPage=0,questPage=0,detailPage=0,selectedEntry=null,saving=false;
 const browserStorage=new URLSearchParams(location.search).get('storage')==='browser';
 backend=!browserStorage;
@@ -388,11 +389,11 @@ function renderBrowser(){
  try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,320,168);ctx.save();ctx.translate(0,-24);
   let arrangement=saved.room;
   if(current==='live-placement'&&selectedDecor){const slots=roomSlots.filter(s=>selectedDecor.slots.includes(s.id)),slot=slots[slotIndex%slots.length];arrangement={...saved.room};for(const id of Object.keys(arrangement))if(arrangement[id]===selectedDecor.id)delete arrangement[id];if(slot)arrangement[slot.id]=selectedDecor.id}
-  room(saved.adopted,arrangement);ctx.restore();
+  if(visiting){room(false,visiting.room);sprite(visiting.species,147,112,56)}else room(saved.adopted,arrangement);ctx.restore();
  }finally{ctx=original}
- window.SGPalBrowser.render({screen:current,title:screens[current].title,lines:browserLines,body:browserBody,choices:hits.map(({label,disabled})=>({label,disabled})),focus,saved,candidate,name:names[candidate][nameIndex],item:selectedDecor||shopItems[shopIndex%shopItems.length],shopItem:shopItems[shopIndex%shopItems.length],entry:selectedEntry,result:gameResult,photo:current==='live-photo'?storedPhoto:photo,stream,backend,busy:gameBusy||saving}, {
+ window.SGPalBrowser.render({screen:current,title:screens[current].title,lines:browserLines,body:browserBody,choices:hits.map(({label,disabled})=>({label,disabled})),focus,saved,visiting,candidate,name:names[candidate][nameIndex],item:selectedDecor||shopItems[shopIndex%shopItems.length],shopItem:shopItems[shopIndex%shopItems.length],entry:selectedEntry,result:gameResult,photo:current==='live-photo'?storedPhoto:photo,stream,backend,busy:gameBusy||saving}, {
   activate(i){focus=i;press()},select(i){focus=i;render()},
-  navigate(id){if(saving)return;if(gameBusy)requestView++;gallery=false;id==='05'?startScan():nav(id)},back,
+  navigate(id){if(saving)return;visiting=null;if(gameBusy)requestView++;gallery=false;id==='05'?startScan():nav(id)},back,
   paintItem(target,art){const old=ctx;try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;decoration(art,8,2)}finally{ctx=old}}
  });
 }
@@ -408,7 +409,7 @@ document.getElementById('photo').onchange=e=>{const f=e.target.files[0];e.target
 window.addEventListener('resize',resize);window.addEventListener('pagehide',stopCamera);document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream){stopCamera();current='05';focus=0;render()}});
 if(compact)document.body.classList.add('kiosk');else{document.body.classList.add('browser-game');document.getElementById('browser-shell').hidden=false;canvas.tabIndex=-1;}
 setInterval(()=>{if(ready&&stream&&current==='05live'&&!document.hidden)render()},100);
-window.SGPal={paintVisit(target,visit){const old=ctx;try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.save();ctx.translate(0,-24);room(false,visit.room);sprite(visit.species,147,112,56);ctx.restore()}finally{ctx=old}},rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
+window.SGPal={visit(room){visiting=room;nav('04');requestAnimationFrame(()=>document.getElementById('return-home').focus())},paintVisit(target,visit){const old=ctx;try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.save();ctx.translate(0,-24);room(false,visit.room);sprite(visit.species,147,112,56);ctx.restore()}finally{ctx=old}},rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){visiting=null;document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
 async function loadSaved(){
  try{
   if(backend){await window.SGPalAccount.boot();saved=await api('state');pendingKey='sgpal-pending-operation-v2:'+saved.owner_id;catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}

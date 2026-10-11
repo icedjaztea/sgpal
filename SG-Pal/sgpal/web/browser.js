@@ -8,34 +8,65 @@ const readable=text=>String(text).replace(/^[A-Z\s.,!?]+$/,s=>s.charAt(0)+s.slic
 let previous='',signature='',actions;
 function fitRoom(){
  const stage=document.querySelector('.room-stage'),art=document.querySelector('.room-art');
- if(innerWidth<=800&&innerHeight>500){art.style.width='';return}
- const style=getComputedStyle(stage),heading=document.querySelector('.room-heading'),caption=document.querySelector('.room-caption');
- const height=stage.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom)-heading.getBoundingClientRect().height-caption.getBoundingClientRect().height-2*parseFloat(style.gap);
- const width=stage.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
- art.style.width=Math.max(0,Math.min(width,(height-12)*320/168+12))+'px';
+ document.documentElement.style.setProperty('--usable-height',(window.visualViewport?.height||innerHeight)+'px');
+ const w=stage.clientWidth,h=stage.clientHeight;
+ // Uniform camera scale: whole room on wide screens, centre crop on portrait.
+ art.style.width=Math.max(w,Math.min(h*320/168,w*2.8))+'px';
 }
 window.addEventListener('resize',fitRoom);
 window.visualViewport?.addEventListener('resize',fitRoom);
-const navItems=[['Home','04','⌂'],['Scan','05','◎'],['CultureDex','07','▤'],['Quests','09','✓'],['Shop','11','◇']];
-const activeSection=id=>id.startsWith('05')||['live-candidate','live-correction','live-uncertain'].includes(id)?'05':id==='07'||['live-story','live-info','live-photo','08locked'].includes(id)?'07':id==='09'||id.startsWith('live-quest')?'09':['11','11confirm','12','13','live-placement','live-commerce-result'].includes(id)?'11':'04';
+const navItems=[['Home','04','⌂'],['Scan','05','◎'],['CultureDex','07','▤'],['Quests','09','✓'],['Shop','11','◇'],['Inventory','12','▣'],['Friends','16','♧']];
+const activeSection=id=>id==='12'?'12':id==='16'?'16':id.startsWith('05')||['live-candidate','live-correction','live-uncertain'].includes(id)?'05':id==='07'||['live-story','live-info','live-photo','08locked'].includes(id)?'07':id==='09'||id.startsWith('live-quest')?'09':['11','11confirm','12','13','live-placement','live-commerce-result'].includes(id)?'11':'04';
 function fullscreenState(){const b=$('fullscreen');b.hidden=!document.fullscreenEnabled&&!document.fullscreenElement;b.textContent=document.fullscreenElement?'Exit fullscreen':'Fullscreen';b.setAttribute('aria-label',b.textContent);b.dataset.active=String(!!document.fullscreenElement)}
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch(_){$('browser-status').textContent='Fullscreen unavailable. You can keep playing in this window.'}};
 document.addEventListener('fullscreenchange',fullscreenState);fullscreenState();
-$('panel-close').onclick=()=>actions.back();
-$('decorate-shortcut').onclick=()=>actions.navigate('13');
-$('game-brand').onclick=e=>{e.preventDefault();actions?.navigate($('game-nav').hidden?'01':'04')};
+$('panel-close').onclick=()=>{window.SGPal.live();restoreToolbar()};
+let returnFocus=null;
+function restoreToolbar(){(returnFocus?.isConnected?returnFocus:$('game-nav').querySelector('button'))?.focus()}
+$('return-home').onclick=()=>{SGPal.live();restoreToolbar()};
+$('settings-open').onclick=()=>{$('settings-dialog').showModal()};
+$('settings-close').onclick=()=>$('settings-dialog').close();
+$('settings-dialog').addEventListener('close',()=> $('settings-open').focus());
+$('account-dialog').addEventListener('close',()=> $('settings-open').focus());
+for(const [id,screen] of [['pal-open','04pal'],['profile-open','14'],['game-settings-open','18'],['decorate-open','13'],['pocket-open','04menu']])$(id).onclick=()=>{$('settings-dialog').close();actions.navigate(screen)};
+$('game-actions').addEventListener('focusin',e=>{for(const b of $('game-actions').children)b.classList.toggle('selected',b===e.target)});
+$('account-open').addEventListener('click',()=> $('settings-dialog').close());
+// Keyboard navigation is presentation-only; inputs retain normal cursor editing.
+window.addEventListener('keydown',e=>{
+ if(!document.body.classList.contains('browser-game')||document.body.classList.contains('design-gallery')||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ const modal=document.querySelector('dialog[open]');
+ if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'].includes(e.key))return;
+ if(e.key==='Escape'){
+  e.preventDefault();e.stopImmediatePropagation();
+  if(modal){if(modal.id==='friends-dialog')$('friends-close').click();else modal.close()}
+  else if(!$('visit-banner').hidden){SGPal.live();restoreToolbar()}
+  else if(previous!=='04'){actions.back();if(previous==='04')restoreToolbar()}
+  else $('settings-open').click();return;
+ }
+ const panel=$('game-panel'),inWindow=previous!=='04';
+ const scope=modal|| (inWindow?panel:$('browser-shell'));
+ const controls=[...scope.querySelectorAll('button:not(:disabled),summary,a[href],input')].filter(n=>n.getClientRects().length&&!n.closest('[hidden]'));
+ if(!controls.length)return;
+ const at=controls.indexOf(document.activeElement);
+ e.preventDefault();e.stopImmediatePropagation();
+ if(e.key==='Enter'){if(!e.repeat)(at>=0?controls[at]:controls[0]).click();return}
+ const step=['ArrowLeft','ArrowUp'].includes(e.key)?-1:1;
+ controls[(at<0?0:(at+step+controls.length)%controls.length)].focus();
+},true);
 window.SGPalBrowser={render(data,controls){
  actions=controls;const {screen,saved,choices}=data;
  const changed=screen!==previous;
+ const requestIndex=screen==='04'?choices.findIndex(c=>c.label==='Status'):-1;
+ $('request-status').hidden=requestIndex<0;$('settings-open').dataset.pending=String(requestIndex>=0);
+ $('request-status').onclick=()=>{$('settings-dialog').close();controls.activate(requestIndex)};
  $('hud-pet').src='assets/'+(saved.adopted?saved.species:data.candidate)+'.png';
  $('hud-name').textContent=saved.adopted?saved.name:'Meet your Pal';
  $('hud-level').textContent=saved.adopted?'Level '+(saved.level||1)+' · '+saved.species:'A friend for the road';
  $('hud-mobile-level').textContent='Level '+(saved.level||1);$('hud-xp').textContent=saved.xp;$('hud-coins').textContent=saved.coins;$('hud-progress').value=saved.xp%50;
- $('room-title').textContent=saved.adopted?saved.name+'’s BTO':'A home for your Pal.';
- $('room-caption').textContent=screen==='live-placement'?'Trying it here. Save when it feels right.':'A little home. A whole neighbourhood.';
- $('decorate-shortcut').hidden=!saved.adopted;
+ $('visit-banner').hidden=!data.visiting;
+ $('visit-label').textContent=data.visiting?'Visiting '+data.visiting.name:'';
  $('game-nav').hidden=!saved.adopted;
- if(!$('game-nav').children.length)for(const [label,id,icon] of navItems){const b=node('button');b.type='button';b.setAttribute('aria-label',label);b.dataset.destination=id;b.append(node('span',icon,'nav-icon'),node('span',label));b.onclick=()=>actions.navigate(id);$('game-nav').append(b)}
+ if(!$('game-nav').children.length)for(const [label,id,icon] of navItems){const b=node('button');b.type='button';b.setAttribute('aria-label',label);b.dataset.destination=id;const caption=node('span',label,'nav-label');caption.dataset.short=({CultureDex:'Dex',Inventory:'Items'})[label]||label;b.append(node('span',icon,'nav-icon'),caption);b.onclick=()=>{returnFocus=b;id==='16'?window.SGPalFriends.open():actions.navigate(id)};$('game-nav').append(b)}
  for(const b of $('game-nav').children){if(b.dataset.destination===activeSection(screen))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')}
  $('browser-shell').dataset.screen=screen;
  $('browser-shell').classList.toggle('at-home',screen==='04');
@@ -80,7 +111,7 @@ window.SGPalBrowser={render(data,controls){
  });
  actionBox.classList.toggle('pet-choices',screen==='02');
  $('browser-status').textContent=data.backend?'Progress saved on this server · private local play':'Browser-only preview · AI requires the server';
- if(changed){$('game-panel').scrollTop=0;document.querySelector('.game-workspace').scrollTop=0;if(previous){$('game-panel').focus({preventScroll:true})}if(screen==='live-reward'){$('game-panel').classList.remove('reward-arrival');void $('game-panel').offsetWidth;$('game-panel').classList.add('reward-arrival')}}
+ if(changed){$('game-panel').scrollTop=0;document.querySelector('.game-workspace').scrollTop=0;requestAnimationFrame(()=>{if(screen==='04')restoreToolbar();else $('game-actions button:not(:disabled)')?.focus({preventScroll:true})});if(screen==='live-reward'){$('game-panel').classList.remove('reward-arrival');void $('game-panel').offsetWidth;$('game-panel').classList.add('reward-arrival')}}
  else if(oldFocus!==undefined)actionBox.querySelector('[data-action="'+oldFocus+'"]')?.focus({preventScroll:true});
  previous=screen;requestAnimationFrame(fitRoom);
 }};
