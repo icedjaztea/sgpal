@@ -1,3 +1,5 @@
+> **Online Pi integration:** see [PI_ONLINE.md](PI_ONLINE.md). It displays the hosted game on the verified SPI LCD and keeps all player data on Render.
+
 > **Current online MVP:** use [Render deployment and recovery accounts](DEPLOY_RENDER.md). No Supabase or SMTP is needed. Older email setup below is legacy reference.
 
 # SG Pal · Kopi Sunset browser integration

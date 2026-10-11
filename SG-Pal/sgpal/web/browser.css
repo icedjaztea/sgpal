@@ -33,3 +33,7 @@ dialog{width:min(480px,calc(100vw - 24px));max-height:calc(var(--usable-height,1
 @media(max-width:600px){#game-nav .nav-label{font-size:0}#game-nav .nav-label:after{content:attr(data-short);font-size:10px}dialog{top:calc(12px + env(safe-area-inset-top));bottom:auto;margin:0 auto}}
 
 #settings-open[data-pending=true]:after{content:'!';color:#805039;background:#e7ba62;padding:0 3px;margin-left:3px}
+
+/* The Pi shares account/friends dialogs; keep them reachable at 320 × 240. */
+body.kiosk dialog{width:calc(100vw - 8px);max-height:calc(100dvh - 8px);padding:8px;font-size:11px;top:4px;bottom:auto;margin:0 auto}
+body.kiosk dialog h2{font-size:14px;margin:4px 0}body.kiosk dialog button{font-size:11px;min-height:28px;padding:4px 6px}body.kiosk dialog input{font-size:12px;padding:4px}body.kiosk #friends-dialog canvas{width:100%;height:auto;aspect-ratio:320/168}
