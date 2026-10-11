@@ -355,3 +355,5 @@ Progress lives outside the code: `~/.local/share/sgpal/progress.json`, with sepa
 - LED electrical guidance: https://learn.adafruit.com/neopixels-on-raspberry-pi/raspberry-pi-wiring
 
 Hardware adapters were written for this package using the vendor's register values as reference. Display transfer uses RGB565 with explicit inclusive address bounds. DejaVu Sans is bundled with its licence. Pixel creature is original code-drawn artwork. No API keys or uploaded personal photographs are bundled.
+
+For the two-minute browser presentation and failure fallbacks, see [DEMO.md](DEMO.md).

@@ -51,7 +51,7 @@ function goHome(){nav('04')}
 function unavailable(title='Not connected'){nav('blocked');screens.blocked.context=title;render()}
 async function api(path,body){
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60000);
- try{const r=await fetch('/api/'+path,{signal:controller.signal,method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(!r.ok){let data;try{data=await r.json()}catch(_){}const error=Error(typeof data?.detail==='string'?data.detail:'Request failed. Check connection and retry.');error.status=r.status;throw error}return await r.json()}finally{clearTimeout(timeout)}
+ try{const r=await fetch('/api/'+path,{signal:controller.signal,method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(!r.ok){let data;try{data=await r.json()}catch(_){}const error=Error(typeof data?.detail==='string'?data.detail:'Request failed. Check connection and retry.');error.status=r.status;throw error}return await r.json()}catch(e){if(e.name==='AbortError')throw Error('Request timed out. Use Status before retrying; the server may have saved it.');if(e instanceof TypeError)throw Error('Connection lost. Use Status or Retry when the server is reachable.');throw e}finally{clearTimeout(timeout)}
 }
 function localPersist(next){localStorage.setItem('sgpal-ui-v1',JSON.stringify(next));saved=next}
 async function adopt(){
@@ -221,11 +221,12 @@ function acceptResult(result){
 async function runGameRequest(){
  if(gallery||gameBusy)return;if(!backend){unavailable('Run the FastAPI server');return}
  gameBusy=true;const token=++requestView;nav('live-working');rememberRequest();
- try{const result=await api(activeRequest.path,activeRequest.body);if(token===requestView&&!gallery)acceptResult(result)}
+ try{const result=await api(activeRequest.path,activeRequest.body);if(token===requestView&&!gallery)acceptResult(result);else if(result.state){saved=result.state;render()}}
  catch(e){if(token===requestView&&!gallery){gameMessage=e.message;detailPage=0;nav('live-request-error')}}
  finally{gameBusy=false}
 }
 async function analysePhoto(){
+ if(gameBusy)return;
  if(!photoPayload&&gameResult?.status==='candidate'){nav('live-candidate');return}
  if(!photoPayload){gameMessage='Choose a photo before analysis.';nav('live-request-error');return}
  activeRequest={path:'scan',body:{operation_id:newId(),image:photoPayload}};
@@ -245,15 +246,16 @@ async function checkRequest(){
  catch(e){gameMessage=e.message;detailPage=0;nav('live-request-error')}
 }
 async function confirmDiscovery(){
- if(gallery||!gameResult)return;
+ if(gallery||gameBusy||!gameResult)return;
  activeRequest={path:'confirm',body:{operation_id:gameResult.operation_id}};await runGameRequest();
 }
 async function correctTo(item){
+ if(gallery||gameBusy)return;
  activeRequest={path:'correct',body:{operation_id:newId(),source_operation_id:gameResult.operation_id,culture_id:item.id}};
  await runGameRequest();
 }
 async function answerQuest(done){
- if(gallery||!selectedEntry)return;
+ if(gallery||gameBusy||!selectedEntry)return;
  activeRequest={path:'quests/answer',body:{operation_id:newId(),culture_id:selectedEntry.id,done}};
  await runGameRequest();
 }
@@ -370,7 +372,7 @@ register('live-commerce-result','Decoration saved result',2,()=>{
 liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS SAVE ON THIS','DEVICE. NO CLOUD SYNC.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
 
 function render(){if(!ready)return;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');}
-function resize(){document.documentElement.style.setProperty('--scale',String(Math.max(1,Math.min(3,Math.floor((innerWidth-60)/320)))))}
+function resize(){const top=canvas.getBoundingClientRect().top+scrollY;const byHeight=Math.floor((innerHeight-top-24)/240);document.documentElement.style.setProperty('--scale',String(Math.max(1,Math.min(3,Math.floor((innerWidth-60)/320),byHeight))))}
 document.getElementById('left').onclick=()=>{canvas.focus();rotate(-1)};document.getElementById('right').onclick=()=>{canvas.focus();rotate(1)};document.getElementById('press').onclick=()=>{canvas.focus();press()};
 window.addEventListener('keydown',e=>{if(['SELECT','INPUT','TEXTAREA','SUMMARY','BUTTON'].includes(e.target.tagName))return;if(['ArrowLeft','ArrowUp','ArrowRight','ArrowDown','Enter',' ','Escape'].includes(e.key)){e.preventDefault();if(e.repeat&&['Enter',' '].includes(e.key))return;if(e.key==='Escape')back();else if(e.key==='Enter'||e.key===' ')press();else rotate(['ArrowLeft','ArrowUp'].includes(e.key)?-1:1)}});
 canvas.addEventListener('click',e=>{const b=canvas.getBoundingClientRect(),x=(e.clientX-b.left)*320/b.width,y=(e.clientY-b.top)*240/b.height;const i=hits.findIndex(h=>x>=h.x&&x<h.x+h.w&&y>=h.y&&y<h.y+h.h);if(i>=0){if(i===focus)press();else{focus=i;render()}}});

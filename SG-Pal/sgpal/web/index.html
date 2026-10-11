@@ -10,7 +10,7 @@
 <div id="accessible" class="sr-only" aria-live="polite"></div>
 <details class="surround" id="review"><summary>Review all screen designs</summary><p>Design previews use sample data. They never change your saved game.</p><label for="scene">Screen</label><select id="scene"></select><button id="live">Return to my Pal</button></details>
 <p class="hint surround">Keyboard: ← / → to turn · Enter to press · Esc to go back.<br>On phone, tap a choice once to focus it, then tap again to select.</p>
-<p class="hint surround">Analyse sends your photo to OpenAI. Discoveries and photos save on this device. Mark quests Done when you finish; no photo check is required. Pi camera/GPIO, cloud sync and social services await connection.</p>
-<input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+<p class="hint surround">Analyse sends your photo to OpenAI. Discoveries and photos save on this device. Mark quests Done when you finish; no photo check is required. Camera needs HTTPS or localhost on this device. On a phone visiting a laptop over HTTP, use Upload. Cloud sync and social services are not connected.</p>
+<input type="file" id="photo" accept="image/jpeg,image/png,image/webp" hidden>
 <video id="camera" playsinline autoplay muted hidden></video>
 </main><script src="app.js"></script></body></html>
