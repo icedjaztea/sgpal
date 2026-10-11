@@ -49,7 +49,7 @@ def discover(client, color='orange'):
 def test_complete_flow_photos_and_reload(game):
     c,path=game
     request=body();scan=c.post('/api/scan',json=request).json()
-    assert scan['status']=='candidate' and scan['state']['xp']==0 and scan['state']['coins']==0
+    assert scan['status']=='candidate' and scan['state']['xp']==0 and scan['state']['coins']==1
     found=c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()
     assert found['reward']=={'xp':10,'coins':5}
     assert found['state']['active']=='kopi'
@@ -60,7 +60,7 @@ def test_complete_flow_photos_and_reload(game):
     evidence=answer()
     verified=c.post('/api/quests/answer',json=evidence).json()
     assert verified['status']=='completed' and verified['reward']=={'xp':25,'coins':10}
-    assert verified['state']['xp']==35 and verified['state']['coins']==15
+    assert verified['state']['xp']==35 and verified['state']['coins']==16
     assert verified['state']['completed']==['kopi']
     quest=verified['state']['quest_details']['kopi']
     assert quest['completed_sgt'].endswith('+08:00')
@@ -69,11 +69,11 @@ def test_complete_flow_photos_and_reload(game):
     assert c.get('/api/operations/'+evidence['operation_id']).json()['status']=='completed'
     for _ in range(3):
         assert c.post('/api/quests/answer',json=evidence).json()['state']['xp']==35
-        assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['state']['coins']==15
+        assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['state']['coins']==16
     assert discover(c,'green')['status']=='duplicate'
     assert c.post('/api/quests/answer',json=answer()).json()['status']=='duplicate'
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
-        assert db.execute('SELECT count(*) FROM rewards').fetchone()[0]==2
+        assert db.execute('SELECT count(*) FROM rewards').fetchone()[0]==4
 
 
 @pytest.mark.parametrize('confidence,cid', [('low','kopi'),('medium','kopi'),('high','unknown')])
@@ -150,7 +150,7 @@ def test_concurrent_confirm_and_answers_award_once(game):
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes=list(pool.map(lambda color:c.post('/api/quests/answer',json=answer()).json(),['blue','purple']))
     assert sorted(o['status'] for o in outcomes)==['completed','duplicate']
-    assert GameStore(path).state()['coins']==15
+    assert GameStore(path).state()['coins']==17
 
 
 def test_migration_preserves_legacy_progress_and_demo(game):
@@ -159,11 +159,11 @@ def test_migration_preserves_legacy_progress_and_demo(game):
     old_bytes=old.path.read_bytes()
     (path/'demo-progress.json').write_text('{"xp":9999}')
     scan=c.post('/api/scan',json=body()).json()
-    assert scan['state']['xp']==45 and scan['state']['coins']==0
+    assert scan['state']['xp']==45 and scan['state']['coins']==1
     assert scan['state']['completed']==['chope'] and scan['state']['active']=='kopi'
     assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['status']=='duplicate'
     assert old.path.read_bytes()==old_bytes
-    assert c.get('/api/state').json()['coins']==0
+    assert c.get('/api/state').json()['coins']==1
     assert GameStore(path).state()['xp']==45
 
 
@@ -194,10 +194,10 @@ def test_reward_commit_failure_rolls_back_everything(game,monkeypatch):
     monkeypatch.setattr(GameStore,'reward',staticmethod(fail))
     assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).status_code==503
     state=c.get('/api/state').json()
-    assert state['xp']==0 and state['coins']==0 and state['discoveries']==[]
+    assert state['xp']==0 and state['coins']==1 and state['discoveries']==[]
     assert c.get('/api/operations/'+scan['operation_id']).json()['status']=='candidate'
     monkeypatch.setattr(GameStore,'reward',staticmethod(original))
-    assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['state']['coins']==5
+    assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['state']['coins']==6
 
 
 def test_retry_after_reload_uses_persisted_photo(game,monkeypatch):
@@ -235,7 +235,7 @@ def test_missing_credential_still_allows_reconciling_committed_result(game,monke
     c.post('/api/confirm',json={'operation_id':request['operation_id']})
     monkeypatch.setattr(server,'credential_present',lambda:False)
     assert c.post('/api/scan',json=request).json()['status']=='confirmed'
-    assert c.get('/api/operations/'+request['operation_id']).json()['state']['coins']==5
+    assert c.get('/api/operations/'+request['operation_id']).json()['state']['coins']==6
 
 
 def test_old_pending_verification_cannot_restart_ai(game,monkeypatch):
@@ -287,7 +287,7 @@ def test_quest_done_not_yet_and_reload_without_ai(game,monkeypatch):
     monkeypatch.setattr(server,'recognise',lambda *args:pytest.fail('Quest answer must not call AI'))
     monkeypatch.setattr(server,'credential_present',lambda:False)
     later=c.post('/api/quests/answer',json=answer(done=False)).json()
-    assert later['status']=='not_done' and later['state']['xp']==10 and later['state']['coins']==5
+    assert later['status']=='not_done' and later['state']['xp']==10 and later['state']['coins']==6
     assert later['state']['active']=='kopi' and later['state']['completed']==[]
     request=answer();done=c.post('/api/quests/answer',json=request).json()
     assert done['status']=='completed' and done['reward']=={'xp':25,'coins':10}
@@ -296,14 +296,14 @@ def test_quest_done_not_yet_and_reload_without_ai(game,monkeypatch):
     assert detail['completed_sgt'].endswith('+08:00')
     assert done['state']['active'] is None
     assert c.get('/api/operations/'+request['operation_id']).json()['status']=='completed'
-    assert c.post('/api/retry',json={'operation_id':request['operation_id']}).json()['state']['coins']==15
+    assert c.post('/api/retry',json={'operation_id':request['operation_id']}).json()['state']['coins']==16
     assert c.post('/api/quests/answer',json=request).json()['state']['xp']==35
     for value in [True,False]:
         duplicate=c.post('/api/quests/answer',json=answer(done=value)).json()
         assert duplicate['status']=='duplicate' and duplicate['reward']=={'xp':0,'coins':0}
     assert GameStore(path).state()['xp']==35
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
-        assert db.execute('SELECT count(*) FROM rewards').fetchone()[0]==2
+        assert db.execute('SELECT count(*) FROM rewards').fetchone()[0]==3
 
 
 def test_quest_answer_validation_and_identity_conflict(game):
@@ -325,7 +325,7 @@ def test_concurrent_quest_answers_reward_once(game):
     with ThreadPoolExecutor(max_workers=4) as pool:
         results=list(pool.map(lambda _:c.post('/api/quests/answer',json=answer()).json(),range(4)))
     assert sorted(r['status'] for r in results)==['completed','duplicate','duplicate','duplicate']
-    assert c.get('/api/state').json()['coins']==15
+    assert c.get('/api/state').json()['coins']==16
 
 
 def test_quest_answer_rollback_then_retry(game,monkeypatch):
@@ -340,7 +340,7 @@ def test_quest_answer_rollback_then_retry(game,monkeypatch):
     state=GameStore(path).state()
     assert state['xp']==10 and state['completed']==[]
     assert c.get('/api/operations/'+request['operation_id']).status_code==404
-    assert c.post('/api/quests/answer',json=request).json()['state']['coins']==15
+    assert c.post('/api/quests/answer',json=request).json()['state']['coins']==16
 
 
 def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
@@ -378,7 +378,7 @@ def test_correction_disagreement_is_not_confirmation(game,monkeypatch):
     corrected=c.post('/api/correct',json={'operation_id':str(uuid.uuid4()),'source_operation_id':scan['operation_id'],'culture_id':'tray'}).json()
     assert corrected['status']=='uncertain'
     assert c.post('/api/confirm',json={'operation_id':corrected['operation_id']}).status_code==409
-    assert c.get('/api/state').json()['coins']==0
+    assert c.get('/api/state').json()['coins']==1
 
 
 def test_catalogue_quests_never_require_proof():
@@ -429,7 +429,7 @@ def test_local_find_rewards_once_and_persists(game, monkeypatch):
     third=c.post('/api/scan',json=body()).json()
     assert c.post('/api/confirm',json={'operation_id':third['operation_id']}).json()['reward']['coins']==0
     state=c.get('/api/state').json()
-    assert state['coins']==5 and state['xp']==10
+    assert state['coins']==8 and state['xp']==10
     assert state['local_finds'][0]['item_key']=='electric-fan'
     assert not state['quests']
 
@@ -441,4 +441,19 @@ def test_local_find_uncertain_or_invalid_never_rewards(game,monkeypatch,fields):
     scan=c.post('/api/scan',json=body()).json()
     assert scan['status']=='uncertain'
     assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).status_code==409
-    assert c.get('/api/state').json()['coins']==0
+    assert c.get('/api/state').json()['coins']==1
+
+
+def test_scan_coin_once_per_completed_request_and_no_failure_bonus(game,monkeypatch):
+    c,_=game
+    monkeypatch.setattr(server,'recognise',lambda *a,**k:result('unknown','low'))
+    req=body();first=c.post('/api/scan',json=req).json()
+    assert first['scan_reward']=={'xp':0,'coins':1}
+    assert first['state']['coins']==1 and first['state']['xp']==0
+    for _ in range(3):
+        assert c.post('/api/scan',json=req).json()['state']['coins']==1
+        assert c.post('/api/retry',json={'operation_id':req['operation_id']}).json()['state']['coins']==1
+    assert c.post('/api/scan',json=body()).json()['state']['coins']==2
+    monkeypatch.setattr(server,'recognise',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('AI unavailable')))
+    assert c.post('/api/scan',json=body('blue')).status_code>=400
+    assert c.get('/api/state').json()['coins']==2

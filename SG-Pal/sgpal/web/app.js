@@ -307,14 +307,14 @@ liveView('05',()=>{
 liveView('05photo',()=>{base('REVIEW PHOTO');picture();text('ANALYSE SENDS TO OPENAI',16,169);rail([['Analyse',analysePhoto],['Retry',()=>startScan()],['Back',()=>nav('05')]])});
 register('live-working','Saving or checking',1,()=>{const answering=['quests/answer','shop/purchase','room/place'].includes(activeRequest?.path);base(answering?'SAVING YOUR CHOICE':'CHECKING PHOTO');sprite(saved.species,120,32,80);lines([answering?'WAITING FOR SAVE.':'WAITING FOR AI RESPONSE.','NO REWARD CONFIRMED.','BACK KEEPS REQUEST ID.'],16,121);rail([['Back',closeRequest]])},{});
 register('live-candidate','Confirm culture suggestion',1,()=>{
- gameRead('IS THIS RIGHT?',(selectedEntry?.title||gameResult.discovery_title||'Your find')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
+ gameRead('IS THIS RIGHT?',(selectedEntry?.title||gameResult.discovery_title||'Your find')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+(gameResult.scan_reward?.coins?' +1 KOPI COIN FOR SCANNING.':'')+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
 },{});
 register('live-correction','Correct the suggestion',1,()=>{
  const entries=catalogue.map(c=>[c.title,()=>correctTo(c)]);
  pagedRows('CHECK ANOTHER ITEM',entries,correctionPage,p=>correctionPage=p,gameResult?.status==='candidate'?'live-candidate':'live-uncertain');
 },{});
 register('live-uncertain','Photo needs another look',1,()=>{
- gameRead('LOCAL LENS',(gameResult?.observation||'Try a clearer photo with more context.')+' No rewards were added.',[['Retry',()=>startScan()],['Correct',()=>nav('live-correction')],['Back',goHome]]);
+ gameRead('LOCAL LENS',(gameResult?.observation||'Try a clearer photo with more context.')+(gameResult?.scan_reward?.coins?' +1 KOPI COIN FOR EXPLORING.':' No discovery bonus added.'),[['Retry',()=>startScan()],['Correct',()=>nav('live-correction')],['Back',goHome]]);
 },{});
 register('live-request-error','Request needs attention',1,()=>{
  gameRead('CHECK NOT FINISHED',gameMessage,[[lastRequestStatus===409?'Refresh':'Retry',lastRequestStatus===409?()=>refreshProgress(true):retryRequest],['Status',checkRequest],['Back',closeRequest]]);

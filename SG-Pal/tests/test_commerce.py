@@ -23,22 +23,22 @@ def buy(c,item='window_plant'):
 
 
 def test_earn_buy_place_replace_reload(game):
-    c,path=game;assert earn(c)['coins']==15
+    c,path=game;assert earn(c)['coins']==16
     before=c.get('/api/state').json()
     c.get('/api/shop')  # Previewing the catalogue has no effect.
     assert c.get('/api/state').json()==before
     result=buy(c)
     assert result['status']=='purchased' and result['charged']==8
-    assert result['state']['coins']==7 and result['state']['xp']==35
+    assert result['state']['coins']==8 and result['state']['xp']==35
     assert result['state']['inventory']==['window_plant']
-    assert buy(c,'kopi_cup')['state']['coins']==2
+    assert buy(c,'kopi_cup')['state']['coins']==3
     for item in ['window_plant','kopi_cup']:
         placed=c.post('/api/room/place',json=request(item,slot_id='window')).json()
         assert placed['status']=='placed' and placed['state']['room']=={'window':item}
     assert set(placed['state']['inventory'])=={'window_plant','kopi_cup'}
     c.post('/api/room/place',json=request('kopi_cup',slot_id='door'))
     state=GameStore(path).state()
-    assert state['room']=={'door':'kopi_cup'} and state['coins']==2 and state['xp']==35
+    assert state['room']=={'door':'kopi_cup'} and state['coins']==3 and state['xp']==35
     assert set(state['inventory'])=={'window_plant','kopi_cup'}
 
 
@@ -47,7 +47,7 @@ def test_insufficient_and_owned_no_charges(game):
     failed=buy(c);assert failed['status']=='insufficient' and failed['state']['coins']==0
     earn(c);buy(c)
     duplicate=buy(c);assert duplicate['status']=='owned' and duplicate['charged']==0
-    assert duplicate['state']['coins']==7
+    assert duplicate['state']['coins']==8
     assert buy(c,'tile_display')['status']=='insufficient'
     assert c.get('/api/state').json()['inventory']==['window_plant']
 
@@ -56,12 +56,12 @@ def test_purchase_retry_and_concurrent_duplicates(game):
     c,_=game;earn(c);req=request()
     with ThreadPoolExecutor(max_workers=4) as pool:
         results=list(pool.map(lambda _:c.post('/api/shop/purchase',json=req).json(),range(4)))
-    assert all(r['state']['coins']==7 for r in results)
+    assert all(r['state']['coins']==8 for r in results)
     assert c.get('/api/operations/'+req['operation_id']).json()['status']=='purchased'
-    assert c.post('/api/retry',json={'operation_id':req['operation_id']}).json()['state']['coins']==7
+    assert c.post('/api/retry',json={'operation_id':req['operation_id']}).json()['state']['coins']==8
     with ThreadPoolExecutor(max_workers=4) as pool:
         results=list(pool.map(lambda _:buy(c),range(4)))
-    assert all(r['status']=='owned' and r['state']['coins']==7 for r in results)
+    assert all(r['status']=='owned' and r['state']['coins']==8 for r in results)
 
 
 def test_competing_items_never_overdraw(game):
@@ -69,7 +69,7 @@ def test_competing_items_never_overdraw(game):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results=list(pool.map(lambda item:buy(c,item),['window_plant','tile_display']))
     assert sorted(r['status'] for r in results)==['insufficient','purchased']
-    assert c.get('/api/state').json()['coins'] in (3,7)
+    assert c.get('/api/state').json()['coins'] in (4,8)
     assert c.get('/api/state').json()['xp']==35
 
 
@@ -101,9 +101,9 @@ def test_purchase_rollback_keeps_balance_and_inventory(game):
     with sqlite3.connect(dbpath) as db:
         db.execute("CREATE TRIGGER fail_purchase BEFORE INSERT ON commerce_operations BEGIN SELECT RAISE(ABORT,'test failure'); END")
     req=request();assert c.post('/api/shop/purchase',json=req).status_code==503
-    state=c.get('/api/state').json();assert state['coins']==15 and state['inventory']==[]
+    state=c.get('/api/state').json();assert state['coins']==16 and state['inventory']==[]
     with sqlite3.connect(dbpath) as db:db.execute('DROP TRIGGER fail_purchase')
-    assert c.post('/api/shop/purchase',json=req).json()['state']['coins']==7
+    assert c.post('/api/shop/purchase',json=req).json()['state']['coins']==8
 
 
 def test_schema2_migration_preserves_all_game_progress(game):
@@ -113,4 +113,4 @@ def test_schema2_migration_preserves_all_game_progress(game):
         db.execute("UPDATE meta SET value='2' WHERE key='version'")
     assert c.get('/api/state').json()==before
     assert c.get(before['log']['kopi']['photo_url']).status_code==200
-    assert buy(c)['state']['coins']==7
+    assert buy(c)['state']['coins']==8

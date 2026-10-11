@@ -300,6 +300,11 @@ class GameStore:
             if local:
                 payload.update(local_find=True, discovery_key=key, discovery_title=title)
             if row['kind'] == 'scan':
+                # A completed analysis earns a participation coin, not discovery XP.
+                # Corrections reuse the original scan and do not mint another coin.
+                if not row['source']:
+                    self.reward(db, 'scan:'+oid, 0, 1)
+                    payload['scan_reward'] = {'xp':0, 'coins':1}
                 status = 'candidate' if (high or (local and not row['target'])) and (not row['target'] or row['target'] == cid) else 'uncertain'
             else:
                 status = 'rejected'

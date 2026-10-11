@@ -66,7 +66,7 @@ def test_migration_conflict_cross_session_logout(clients):
     assert not b.get('/api/auth/session').json()['signed_in']
     login(b,path,'bob');adopt(b,'Bob')
     assert b.get('/api/state').json()['coins']==0
-    assert a.get('/api/state').json()['coins']==5
+    assert a.get('/api/state').json()['coins']==6
 
 def test_concurrent_rewards_and_stale_writes(clients):
     a,b,path=clients;adopt(a);discover(a);login(a,path);login(b,path,existing=True)
@@ -76,7 +76,7 @@ def test_concurrent_rewards_and_stale_writes(clients):
         responses=list(pool.map(lambda c:c.post('/api/quests/answer',json=answer()),[a,b]))
     assert all(r.status_code==200 for r in responses)
     assert sum(r.json()['reward']['coins'] for r in responses)==10
-    assert a.get('/api/state').json()['coins']==15
+    assert a.get('/api/state').json()['coins']==16
     assert a.post('/api/sound',json={'enabled':True},headers={'If-Match':revision}).status_code==409
     assert a.get('/api/state').json()==b.get('/api/state').json()
 

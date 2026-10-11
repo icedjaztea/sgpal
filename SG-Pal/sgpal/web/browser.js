@@ -91,7 +91,7 @@ window.SGPalBrowser={render(data,controls){
   if(screen==='05error')body=data.lines.map(readable).join(' ')+' Camera access needs permission and HTTPS or device-local localhost. Upload a saved photo instead.';
   if(screen==='05live'&&data.stream){const v=node('video');v.autoplay=true;v.muted=true;v.playsInline=true;v.srcObject=data.stream;v.play().catch(()=>{});media.append(v);body='Frame the cultural item and capture when you’re ready.'}
   if(['05photo','live-photo'].includes(screen)&&data.photo){const im=node('img');im.src=data.photo.src;im.alt=screen==='live-photo'?'Your saved cultural discovery':'Photo ready for recognition';media.append(im)}
-  if(screen==='05photo')body='Happy with this photo? Analyse sends it to OpenAI. A photo alone never grants a reward.';
+  if(screen==='05photo')body='Happy with this photo? Analyse sends it to OpenAI. Each completed AI scan earns 1 Kopi Coin. New discoveries can earn a bonus.';
   if(['11','11confirm','live-commerce-result'].includes(screen)){const item=screen==='11'?data.shopItem:data.item;if(item){const art=node('canvas',undefined,'item-art');art.width=52;art.height=60;controls.paintItem(art,item.art);media.append(art);if(screen==='11'){const owned=saved.inventory.includes(item.id);body=item.description;copy.append(node('h3',item.title),node('p',item.price+' Kopi Coins','item-price'),node('p',owned?'Already yours. Find it in your inventory.':saved.coins<item.price?'You need '+(item.price-saved.coins)+' more coins.':'A little treat within reach.','ownership'))}}}
   if(screen==='live-quest-answer')body='This one is on trust. Choose “Yes, I did it” when you’ve actually finished. “Not yet” keeps it active, with no penalty and no proof needed.';
   if(screen==='live-reward'){const reward=data.result?.reward||{xp:0,coins:0};media.append(picture(saved.species));body=data.result.status==='duplicate'?'Already part of your story. No extra rewards were added.':data.result.kind==='complete'?'Quest complete — recorded as self-reported. Nicely done.':'A new Singapore story, saved to your CultureDex.';const badge=node('div',undefined,'reward-badge');badge.append(node('strong','+'+reward.xp+' Culture XP'),node('span','+'+reward.coins+' Kopi Coins'));copy.append(badge)}
@@ -100,7 +100,8 @@ window.SGPalBrowser={render(data,controls){
    $('panel-title').textContent=result.discovery_title||data.entry?.title||(screen==='live-candidate'?'Nice find, neighbour!':'Your local lens');
    const cards=node('div',undefined,'scan-cards');
    for(const [label,content,icon] of [['Spotted',parts[0]||'Try a clearer photo.','◉'],['The Singapore connection',parts[1]||'Still figuring out the local connection.','✦']]){const card=node('section',undefined,'scan-card');card.append(node('h3',icon+' '+label),node('p',content));cards.append(card)}
-   const note=screen==='live-candidate'?'Looks right? Confirm to save it. New finds earn +10 XP and +5 Kopi Coins; repeat finds earn no extra reward.':'Not confident enough for a reward yet. Try another angle or correct the suggestion.';
+   if(result.scan_reward?.coins)cards.append(node('p','◈ +1 Kopi Coin — thanks for exploring!','scan-coin'));
+   const note=screen==='live-candidate'?'Looks right? Confirm to save it. New finds earn +10 XP and +5 Kopi Coins; repeat finds earn no extra reward.':'No discovery bonus yet. Try another angle or correct the suggestion.';
    cards.append(node('p',note,'scan-reward-note'));copy.append(cards);body='';
   }
   if(screen==='live-reward'&&data.result?.local_find)body=data.result.status==='duplicate'?'You’ve already collected this find. Keep exploring!':data.result.discovery_title+' joins your local finds. Shiok!';
