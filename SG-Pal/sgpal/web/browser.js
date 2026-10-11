@@ -11,7 +11,8 @@ function fitRoom(){
  document.documentElement.style.setProperty('--usable-height',(window.visualViewport?.height||innerHeight)+'px');
  const w=stage.clientWidth,h=stage.clientHeight;
  // Uniform camera scale: whole room on wide screens, centre crop on portrait.
- art.style.width=Math.max(w,Math.min(h*320/168,w*2.8))+'px';
+ const canvas=$('room-art'),ratio=canvas.width/canvas.height;
+ art.style.width=Math.round(Math.max(w,Math.min(h*ratio,w*2.8)))+'px';
 }
 window.addEventListener('resize',fitRoom);
 window.visualViewport?.addEventListener('resize',fitRoom);
