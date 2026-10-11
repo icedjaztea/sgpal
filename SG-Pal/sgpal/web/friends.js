@@ -1,0 +1,20 @@
+/* Saved-room visits use only explicitly shared backend fields. */
+(() => {
+'use strict';
+const $=id=>document.getElementById(id),dialog=$('friends-dialog'),content=$('friends-content'),message=$('friends-message');
+const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n};
+let busy=false,generation=0;
+function button(label,fn){const b=el('button',label);b.type='button';b.onclick=()=>run(fn);return b}
+async function api(path='',body){const r=await fetch('/api/friends'+path,{method:body?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(20000),headers:body?{'Content-Type':'application/json',...SGPalAccount.headers()}:{},body:body?JSON.stringify(body):undefined});let v;try{v=await r.json()}catch(_){}if(!r.ok)throw Error(typeof v?.detail==='string'?v.detail:'Friends unavailable. Refresh and try again.');return v}
+async function run(fn){if(busy)return;busy=true;message.textContent='Checking…';try{await fn()}catch(e){message.textContent=e.message||'Connection failed. Try Refresh.'}finally{busy=false}}
+async function change(code,action){const result=await api('',{code,action});await list();message.textContent=result.message}
+async function visit(code){const token=generation,room=await api('/'+code+'/room');if(!dialog.open||token!==generation)return;content.replaceChildren(el('h3',room.name+'’s BTO'),el('p','Saved room · read-only. No progress or coins change when visiting.'));const canvas=el('canvas');canvas.width=320;canvas.height=168;canvas.setAttribute('aria-label',room.name+'’s saved room');content.append(canvas,button('Back to friends',list));SGPal.paintVisit(canvas,room);message.textContent='Visiting a saved room.'}
+async function list(){const token=++generation,data=await api();if(!dialog.open||token!==generation)return;content.replaceChildren();content.append(el('p','My friend code'),el('code',data.code),button('Copy code',async()=>{try{await navigator.clipboard.writeText(data.code);message.textContent='Friend code copied.'}catch(_){message.textContent='Copy unavailable. Select and copy the code shown above.'}}));
+ const form=el('form'),label=el('label','Your friend’s code'),input=el('input');input.id='friend-code-input';input.required=true;input.maxLength=12;input.pattern='[A-Fa-f0-9]{12}';input.autocomplete='off';input.autocapitalize='characters';label.htmlFor=input.id;const send=el('button','Send request');send.type='submit';form.append(label,input,send);form.onsubmit=e=>{e.preventDefault();run(()=>change(input.value.trim().toUpperCase(),'request'))};content.append(form,button('Refresh',list));
+ for(const [key,title] of [['incoming','Incoming requests'],['outgoing','Sent requests'],['friends','Friends']]){content.append(el('h3',title));if(!data[key].length)content.append(el('p','None yet.'));for(const p of data[key]){const row=el('div');row.className='friend-row';row.append(el('p',p.name+' · '+p.species),el('code',p.code));if(key==='incoming')row.append(button('Accept',()=>change(p.code,'accept')),button('Decline',()=>change(p.code,'decline')));if(key==='friends')row.append(button('Visit room',()=>visit(p.code)),button('Remove friend',()=>change(p.code,'remove')));content.append(row)}}message.textContent='Friends refreshed.';
+}
+function close(){generation++;content.replaceChildren();dialog.close();SGPal.live()}
+$('friends-close').onclick=close;dialog.addEventListener('cancel',e=>{e.preventDefault();close()});dialog.addEventListener('keydown',e=>e.stopPropagation());
+function open(){if(!dialog.open)dialog.showModal();content.replaceChildren();if(!window.SGPalAccount?.session?.signed_in){message.textContent='Sign in using Save my progress to use friends. Email login requires the Supabase setup in ACCOUNTS.md.';return}if(SGPal.inspect().gallery||!SGPal.inspect().backend){message.textContent='Return to your live Pal before opening friends.';return}content.append(button('Refresh',list));run(list)}
+$('friends-open').onclick=open;window.SGPalFriends={open};
+})();

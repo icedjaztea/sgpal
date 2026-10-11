@@ -21,7 +21,7 @@
     <div class="hud-stat xp-stat"><span class="mobile-level" id="hud-mobile-level"></span><span>Culture XP</span><strong id="hud-xp">0</strong><progress id="hud-progress" max="50" value="0" aria-label="Progress toward next level"></progress></div>
     <div class="hud-stat coin-stat"><span>Kopi Coins</span><strong id="hud-coins">0</strong></div>
     <button id="fullscreen" type="button" hidden>Fullscreen</button>
-    <div class="account-strip"><span id="account-label">Starting private guest session…</span><span id="save-status" role="status">Loading progress…</span><button id="refresh-progress" type="button">Refresh progress</button><button id="account-open" type="button">Save my progress</button></div>
+    <div class="account-strip"><span id="account-label">Starting private guest session…</span><span id="save-status" role="status">Loading progress…</span><button id="refresh-progress" type="button">Refresh progress</button><button id="friends-open" type="button">Friends</button><button id="account-open" type="button">Save my progress</button></div>
   </header>
   <nav id="game-nav" aria-label="Game navigation"></nav>
   <main class="game-workspace">
@@ -48,4 +48,9 @@
   <p id="account-message" role="status"></p><button id="sign-out" type="button" hidden>Sign out</button>
   <details id="account-import"><summary>Import an existing local save</summary><p>Ask the server operator to prepare a one-time import key using ACCOUNTS.md. Import into a fresh guest; existing saves are never overwritten.</p><label for="legacy-key">Choose import key file</label><input id="legacy-key" type="file" accept=".txt"></details>
 </dialog>
-<script src="accounts.js"></script><script src="browser.js"></script><script src="app.js"></script></body></html>
+<dialog id="friends-dialog" aria-labelledby="friends-heading">
+<button id="friends-close" type="button">Return to my room</button><h2 id="friends-heading">Your neighbours</h2>
+<p>Visit saved rooms, not live multiplayer. Only accepted friends can visit.</p>
+<p id="friends-message" role="status"></p><div id="friends-content"></div>
+</dialog>
+<script src="friends.js"></script><script src="accounts.js"></script><script src="browser.js"></script><script src="app.js"></script></body></html>

@@ -365,3 +365,5 @@ original 320 × 240 compact layout; both share the same progress and backend.
 ### Browser accounts and synchronization
 
 Browser saves are now private per guest/account. Optional **Save my progress** uses Supabase email magic links; provider configuration is required for real login. See [ACCOUNTS.md](ACCOUNTS.md) for exact setup, persistent hosting, conflict handling and the explicit one-time import of previous shared saves. The original shared files are preserved but never assigned automatically. Laptop and phone must use the same server to synchronize.
+
+Signed-in browser players can now open **Friends** to share a stable code, request/accept/decline, visit an accepted friend’s saved room, and remove friends. Visits are read-only; email login setup remains required. See [ACCOUNTS.md](ACCOUNTS.md#friends-saved-rooms).

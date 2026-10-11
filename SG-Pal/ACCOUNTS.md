@@ -68,3 +68,11 @@ Old versions had one server-wide save. It is never automatically given to the fi
 Run `.venv/bin/python -m pytest tests -q`, plus `scripts/test_browser.py`, `scripts/test_gameplay_browser.py` and `scripts/test_accounts_browser.py` with that Python interpreter and Chrome installed. Account browser tests use a guarded temporary fixture with a clearly mocked email provider; production startup cannot enable it. Gameplay browser tests mock AI. Live SMTP/Supabase login must be validated after external configuration. No physical phone or Pi validation is implied.
 
 Email requests are rate-limited per email/IP. Sessions, claim keys and CSRF values are stored privately; cookie/claim tokens are hashed in the database. Every private route resolves its owner from the session, never from a client owner ID. Operational limits: guest/session cleanup, account deletion/export and multi-host storage are not implemented. Protect and back up the data directory; it contains private photos and email addresses.
+
+## Friends (saved rooms)
+
+Open **Friends** after email sign-in. Copy your stable 12-character code, send a request using another account's code, and use Refresh to see incoming requests. Accept or decline; accepted friends can visit the latest saved room. Return to my room leaves gameplay unchanged. Remove friend immediately denies subsequent room fetches in both directions. A previously downloaded snapshot cannot be recalled; visits are not live multiplayer.
+
+Account identities, friend codes and friendships share `accounts.sqlite3`, independent of browser or future device type. Existing per-player gameplay storage is unchanged. Shared profiles contain only pet name/species/adoption, friend code and decoration slots; emails, balances, CultureDex photos and credentials remain private. Sending requests is limited to one every three seconds per account, including invalid guesses. No chat, gifts, trades, presence, notifications or Pi pairing.
+
+Focused validation: `python -m pytest tests/test_friends.py tests/test_accounts.py -q` and `python scripts/test_friends_browser.py`. Browser validation uses the existing guarded mock-email fixture, not a production login bypass. Real friends require the Supabase email/SMTP configuration and the same persistent backend described above.
