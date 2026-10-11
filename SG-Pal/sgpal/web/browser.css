@@ -4,7 +4,7 @@ body.browser-game{font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Sego
 .browser-game.design-gallery #compact-shell{display:block;height:100dvh;overflow:auto}
 .browser-game.design-gallery #browser-shell{display:none}
 [hidden]{display:none!important}
-#browser-shell{height:100vh;height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"hud" "nav" "game";padding-top:env(safe-area-inset-top);color:#29334a;overflow:hidden}
+#browser-shell{height:100vh;height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"hud" "nav" "game";padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);color:#29334a;overflow:hidden}
 #browser-shell button{font:600 14px/1.35 system-ui,sans-serif;min-height:44px;padding:11px 18px;border:1px solid #b9a382;border-radius:10px;background:#fff5df;color:#29334a;transition:box-shadow .14s,transform .14s;touch-action:manipulation}
 #browser-shell button:hover{background:#efd4b1}
 #browser-shell button:active{transform:translateY(1px)}
