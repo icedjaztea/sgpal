@@ -112,7 +112,10 @@ def run(args):
         if cdp is None:raise RuntimeError('Chromium startup timed out')
         cdp.call('Emulation.setDeviceMetricsOverride',{'width':320,'height':240,'deviceScaleFactor':1,'mobile':False})
         cdp.call('Page.enable')
-        if args.camera:cdp.call('Page.setInterceptFileChooserDialog',{'enabled':True})
+        if args.camera:
+            cdp.call('Page.setInterceptFileChooserDialog',{'enabled':True})
+            cdp.call('Page.addScriptToEvaluateOnNewDocument',{'source':'window.SGPalPiCamera=true'})
+            cdp.evaluate('window.SGPalPiCamera=true')
         display=panel();events=queue.Queue()
         if args.controls:
             from hardware import Controls

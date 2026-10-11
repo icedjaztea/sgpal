@@ -90,3 +90,7 @@ From a **Mac Terminal**, outside SSH:
 ssh -t -i ~/.ssh/sgpal_codex jaz@sgpal.local 'cd ~/sgpal-online/SG-Pal && python3 pi_remote.py'
 ```
 Left/Right (or A/D) selects, Enter confirms, Esc/B goes Back, Q closes the remote without stopping the game. Requires the existing display bridge. This uses SSH and the browser's loopback input connection; it opens no network listener. Run the bridge without `--touch` or `--controls` for the plain Pi display. Account recovery remains the separate hidden-prompt `pi_online.py restore` command.
+
+### Confirmed knob and two-button setup
+Private configuration `~/.config/sgpal-online.json`: rotary_a 5, rotary_b 6, rotary_press 13, back_button 19, scan_button 26 (BCM). Use `run --controls --camera`, without `--touch`. Mac remote remains compatible.
+With `--camera`, choosing Camera or Upload invokes the local CSI still capture through the existing private chooser bridge. It does not request browser webcam permission or disable browser security. Capture remains user-triggered; Analyse remains a separate hosted request. Physical wiring and detent calibration still require local confirmation.
