@@ -22,6 +22,7 @@ def test_recovery_progress_isolation_and_friend_visit(clients):
     with accounts.Sessions(path).db() as db:
         assert db.execute('SELECT hash FROM recovery').fetchone()[0]==hashlib.sha256(code.encode()).hexdigest()
     assert code.encode() not in (path/'accounts.sqlite3').read_bytes()
+    b.get('/api/auth/session')
     old=b.cookies.get(accounts.COOKIE)
     assert restore(b,code).status_code==200
     assert b.cookies.get(accounts.COOKIE)!=old
