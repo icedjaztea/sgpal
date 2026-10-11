@@ -34,3 +34,19 @@ def index():
 
 
 app.mount('/',server.app)
+
+# Explicit test-only identity provider, inaccessible from production startup.
+if os.environ.get('SGPAL_AUTH_FIXTURE')=='1':
+    import hashlib
+    import uuid
+    from fastapi import HTTPException
+    from sgpal import accounts
+    class TestEmail:
+        ready=True
+        def __init__(self):self.links={}
+        def send(self,email):self.links[hashlib.sha256(email.encode()).hexdigest()]=email
+        def verify(self,token):
+            email=self.links.pop(token,None)
+            if not email:raise HTTPException(401,'TEST: invalid or consumed email link')
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS,email)),email
+    accounts.provider=TestEmail()

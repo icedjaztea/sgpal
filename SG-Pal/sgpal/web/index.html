@@ -21,6 +21,7 @@
     <div class="hud-stat xp-stat"><span class="mobile-level" id="hud-mobile-level"></span><span>Culture XP</span><strong id="hud-xp">0</strong><progress id="hud-progress" max="50" value="0" aria-label="Progress toward next level"></progress></div>
     <div class="hud-stat coin-stat"><span>Kopi Coins</span><strong id="hud-coins">0</strong></div>
     <button id="fullscreen" type="button" hidden>Fullscreen</button>
+    <div class="account-strip"><span id="account-label">Starting private guest session…</span><span id="save-status" role="status">Loading progress…</span><button id="refresh-progress" type="button">Refresh progress</button><button id="account-open" type="button">Save my progress</button></div>
   </header>
   <nav id="game-nav" aria-label="Game navigation"></nav>
   <main class="game-workspace">
@@ -39,4 +40,12 @@
     </section>
   </main>
 </div>
-<script src="browser.js"></script><script src="app.js"></script></body></html>
+<dialog id="account-dialog" aria-labelledby="account-heading">
+  <button id="account-close" type="button">Close</button><h2 id="account-heading">Save your progress</h2><p id="account-description"></p>
+  <form id="account-email-form"><label for="login-email">Email address</label><input id="login-email" type="email" autocomplete="email" maxlength="254" required><button type="submit">Email me a sign-in link</button></form>
+  <button id="confirm-email-link" type="button" hidden>Confirm email sign-in</button>
+  <div id="account-conflict" hidden><p>This email already has a save. Use the account save, or keep playing this guest save. No balances or inventories will be combined. If you choose the account, this guest save is archived on the server and will no longer be active in this browser.</p><button id="use-account" type="button">Use account save</button><button id="use-guest" type="button">Keep guest save</button></div>
+  <p id="account-message" role="status"></p><button id="sign-out" type="button" hidden>Sign out</button>
+  <details id="account-import"><summary>Import an existing local save</summary><p>Ask the server operator to prepare a one-time import key using ACCOUNTS.md. Import into a fresh guest; existing saves are never overwritten.</p><label for="legacy-key">Choose import key file</label><input id="legacy-key" type="file" accept=".txt"></details>
+</dialog>
+<script src="accounts.js"></script><script src="browser.js"></script><script src="app.js"></script></body></html>

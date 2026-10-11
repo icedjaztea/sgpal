@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image
-from fastapi.testclient import TestClient
+from session_client import SessionClient as TestClient
 from core import Store, normalise
 from sgpal import server
 from sgpal.gameplay import GameStore
@@ -32,6 +32,7 @@ def result(cid='kopi', confidence='high', verified=False):
 @pytest.fixture
 def game(tmp_path,monkeypatch):
     monkeypatch.setattr(server,'DATA',tmp_path)
+    monkeypatch.setattr(server,'data_dir',lambda:tmp_path)
     monkeypatch.setattr(server,'credential_present',lambda:True)
     monkeypatch.setattr(server,'recognise',lambda image,quest=None,correction=None: result(quest['id'] if quest else correction['id'] if correction else 'kopi',verified=bool(quest)))
     client=TestClient(server.app)

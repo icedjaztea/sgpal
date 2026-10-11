@@ -17,7 +17,10 @@ OUT=ROOT/'test-results';OUT.mkdir(exist_ok=True)
 
 
 def info(page):return page.evaluate('SGPal.inspect()')
-def screen(page,name):page.wait_for_function('(name)=>SGPal.inspect().current===name',arg=name)
+def screen(page,name):
+    try:page.wait_for_function('(name)=>SGPal.inspect().current===name',arg=name)
+    except Exception:
+        print('Expected',name,'actual',info(page),page.locator('#panel-copy').inner_text());raise
 def choose(page,label):
     assert label in info(page)['choices'],(label,info(page))
     button=page.locator('#game-actions').get_by_role('button',name=label,exact=True)
@@ -61,7 +64,8 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             # Persist candidate across reload, then confirm. Simulate a committed
             # confirmation whose HTTP response is lost before reaching the client.
             page.reload();screen(page,'live-candidate');page.locator('#screen').focus()
-            def lose_response(route):route.fetch();route.abort()
+            def lose_response(route):
+                response=route.fetch();assert response.ok,response.text();route.abort()
             page.route('**/api/confirm',lose_response)
             choose(page,'Yes');screen(page,'live-request-error')
             page.unroute('**/api/confirm');choose(page,'Status');screen(page,'live-reward')

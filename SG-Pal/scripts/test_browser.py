@@ -36,7 +36,7 @@ def choose(page, label):
 
 
 def screen(page, current):
-    page.wait_for_function('(s)=>SGPal.inspect().current===s', arg=current)
+    page.wait_for_function('(s)=>SGPal.inspect().current===s && SGPal.inspect().choices.length>0', arg=current)
 
 
 def boot(page, url):
@@ -75,18 +75,19 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                 page = context.new_page()
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 boot(page, url)
+                player=data/'players'/inspect(page)['saved']['owner_id']
                 choose(page, 'Start'); choose(page, species)
                 choose(page, 'Back')
                 assert inspect(page)['choices'][inspect(page)['focus']] == species
                 choose(page, species); choose(page, 'Choose'); choose(page, 'Reroll')
-                assert not (data / 'profile.json').exists()
+                assert not (player / 'profile.json').exists()
                 choose(page, 'Keep'); screen(page, '04')
                 assert inspect(page)['saved']['name'] == name
                 page.reload(); screen(page, '04')
                 assert inspect(page)['saved']['species'] == species
                 if species == 'otter':
                     page.screenshot(path=str(OUT / 'desktop.png'))
-                    before = (data / 'profile.json').read_bytes()
+                    before = (player / 'profile.json').read_bytes()
                     ids = page.evaluate("SGPal.manifest().filter(s=>!s.id.startsWith('live-')).map(s=>s.id)")
                     for ident in ids:
                         page.evaluate('(id)=>SGPal.preview(id)', ident)
@@ -96,8 +97,8 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                     choose(page, 'SOUND: OFF')
                     for ident, label in [('03', 'Keep'), ('06check', 'Yes'), ('10pass', 'Done'), ('11confirm', 'Confirm'), ('13confirm', 'Save'), ('16request', 'Accept')]:
                         page.evaluate('(id)=>SGPal.preview(id)', ident); choose(page, label)
-                    assert (data / 'profile.json').read_bytes() == before
-                    assert not (data / 'progress.json').exists()
+                    assert (player / 'profile.json').read_bytes() == before
+                    assert not (player / 'progress.json').exists()
                     page.evaluate('SGPal.live()'); screen(page, '04')
                     # Shared keyboard adapter: focus canvas, arrow moves, Enter activates, Escape returns.
                     page.locator('#screen').focus(); page.keyboard.press('ArrowRight'); page.keyboard.press('Enter'); screen(page, '05')
@@ -138,7 +139,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                     assert page.evaluate("localStorage.getItem('sgpal-ui-v1')") is None
                     page.unroute('**/api/state'); choose(page, 'Retry'); screen(page, '04')
                     # Simulate a lost adoption response on a fresh profile; recover committed save.
-                    (data / 'profile.json').unlink()
+                    (player / 'profile.json').unlink()
                     page.reload(); screen(page, '01'); choose(page, 'Start'); choose(page, 'otter'); choose(page, 'Choose')
                     def lose_response(route):
                         route.fetch()
@@ -147,7 +148,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                     choose(page, 'Keep'); screen(page, '04')
                     assert inspect(page)['saved']['name'] == 'Kaya'
                 context.close()
-                (data / 'profile.json').unlink()
+                (player / 'profile.json').unlink()
             # Touch-only onboarding and menu paging at phone dimensions.
             context = browser.new_context(viewport={'width':390,'height':844}, is_mobile=True, has_touch=True, device_scale_factor=3)
             page = context.new_page(); page.on('pageerror', lambda e: errors.append(str(e)))
@@ -165,7 +166,9 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
             assert 'Settings' in inspect(page)['choices']
             tap(page, 160, 50); screen(page, '18')
             tap(page, 160, 84); tap(page, 160, 84)
-            page.wait_for_function('SGPal.inspect().saved.sound===true')
+
+            try:page.wait_for_function('SGPal.inspect().saved.sound===true',timeout=5000)
+            except Exception:print('Sound state:',inspect(page));raise
             page.reload(); screen(page, '04')
             assert inspect(page)['saved']['sound'] is True
             for width in [320, 360, 375, 390, 768, 1100]:
@@ -184,11 +187,15 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
             assert bounds['width']==320 and bounds['height']==240 and bounds['x']==0 and bounds['y']==0
             page.screenshot(path=str(OUT/'kiosk.png'))
             context.close()
-            # Read existing real catalogue/progress, with an unrelated isolated demo save.
+            # Read a legacy-format save inside this guest's private directory.
+            page=browser.new_page();page.on('pageerror', lambda e: errors.append(str(e)))
+            boot(page,url)
+            data=data/'players'/inspect(page)['saved']['owner_id'];data.mkdir(parents=True,exist_ok=True)
+            (data/'profile.json').write_text(json.dumps({'version':1,'adopted':True,'species':'otter','name':'Kaya','sound':False}))
+            # An unrelated isolated demo save must never be imported.
             (data/'progress.json').write_text(json.dumps({'xp':85,'log':{'chope':{'time':1791684000,'hash':'old'},'kopi':{'time':1791685000,'hash':'other'}},'completed':['chope'],'active':'kopi'}))
             (data/'demo-progress.json').write_text(json.dumps({'xp':999,'log':{},'completed':[],'active':None}))
             before=(data/'progress.json').read_bytes()
-            page=browser.new_page();page.on('pageerror', lambda e: errors.append(str(e)))
             page.goto(url+'/?kiosk=1'); screen(page,'04'); assert inspect(page)['saved']['xp']==85
             choose(page,'Menu'); choose(page,'CultureDex'); choose(page,'#001 CHOPE CULTURE'); screen(page,'live-story')
             choose(page,'Info'); screen(page,'live-info'); choose(page,'Quest'); screen(page,'live-quest')
