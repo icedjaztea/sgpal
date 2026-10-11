@@ -54,7 +54,8 @@ new key. Click Analyse deliberately to send a photo to OpenAI. Real photos and
 Singapore-time records save to the local gameplay database. Existing JSON progress
 is imported once without altering it or granting retroactive coins.
 
-Shop, decoration, accounts/sync, pairing and friends remain deferred. The original
+A small shop, inventory and room placement now work with earned Kopi Coins.
+Accounts/sync, pairing and friends remain deferred. The original
 native `app.py --pi` runtime is retained; it does not yet render the new browser UI.
 After migration, continue that save through FastAPI; changing its original JSON
 with the old runtime creates a detected conflict rather than silently losing data.

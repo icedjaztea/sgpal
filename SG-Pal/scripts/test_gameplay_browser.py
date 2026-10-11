@@ -92,10 +92,44 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Correct');choose(page,'Kaya toast');screen(page,'live-candidate');choose(page,'Yes');screen(page,'live-reward')
             assert info(page)['saved']['xp']==35 and info(page)['saved']['coins']==15
             assert info(page)['saved']['completed']==['kaya']
+            # Earned coins -> purchase -> inventory -> room. No wallet seeding.
+            choose(page,'Home');choose(page,'Menu');choose(page,'Shop');screen(page,'11')
+            choose(page,'Buy');screen(page,'11confirm');choose(page,'Back');screen(page,'11')
+            assert info(page)['saved']['coins']==15 and info(page)['saved']['inventory']==[]
+            choose(page,'Buy');page.route('**/api/shop/purchase',lose_response)
+            choose(page,'Confirm');screen(page,'live-request-error')
+            page.unroute('**/api/shop/purchase')
+            page.reload();screen(page,'live-commerce-result');page.locator('#screen').focus()
+            assert info(page)['saved']['coins']==7 and info(page)['saved']['xp']==35
+            choose(page,'Shop');screen(page,'11');assert 'Owned' in info(page)['choices']
+            choose(page,'Owned');screen(page,'12');choose(page,'Window plant');screen(page,'live-placement')
+            assert info(page)['saved']['room']=={}
+            choose(page,'Back');screen(page,'12');assert info(page)['saved']['room']=={}
+            choose(page,'Window plant');screen(page,'live-placement')
+            # Touch uses the same Save action as keyboard/rotary.
+            box=page.locator('#screen').bounding_box();scale=box['width']/320
+            page.touchscreen.tap(box['x']+45*scale,box['y']+208*scale)
+            screen(page,'live-commerce-result');assert info(page)['saved']['room']=={'window':'window_plant'}
+            page.locator('#screen').focus();choose(page,'Home');screen(page,'04')
+            page.screenshot(path=str(OUT/'decorated-room.png'))
+            page.reload();screen(page,'04');assert info(page)['saved']['room']=={'window':'window_plant'}
+            assert info(page)['saved']['coins']==7 and info(page)['saved']['inventory']==['window_plant']
+            page.locator('#screen').focus();choose(page,'Menu');choose(page,'Shop')
+            choose(page,'Next');choose(page,'Next');choose(page,'Buy');choose(page,'Confirm');screen(page,'live-commerce-result')
+            assert info(page)['saved']['coins']==7 and info(page)['saved']['inventory']==['window_plant']
+            page.screenshot(path=str(OUT/'shop-insufficient.png'))
+            choose(page,'Shop');choose(page,'Next');choose(page,'Next');choose(page,'Buy');choose(page,'Confirm');screen(page,'live-commerce-result')
+            assert info(page)['saved']['coins']==2
+            choose(page,'Items');choose(page,'Kopi cup');screen(page,'live-placement');choose(page,'Save');screen(page,'live-commerce-result')
+            assert info(page)['saved']['room']=={'window':'kopi_cup'}
+            assert set(info(page)['saved']['inventory'])=={'window_plant','kopi_cup'}
+            choose(page,'Home');page.reload();screen(page,'04')
+            assert info(page)['saved']['coins']==2 and info(page)['saved']['xp']==35
+            assert info(page)['saved']['room']=={'window':'kopi_cup'}
             assert page.evaluate('SGPal.audit()')==[]
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert not errors,errors
             browser.close()
-            print('PASS: full UI flow, correction, lost-response reconciliation, persisted photos, Not yet, Done, failed-delivery retry across reload, exactly-once discovery/quest rewards, reload, 390px layout, no JS errors. AI was an injected test fixture.')
+            print('PASS: full UI flow, correction, lost-response reconciliation, persisted photos, Not yet, Done, failed-delivery retry across reload, exactly-once discovery/quest rewards, earned-coin purchases, cancel, insufficient funds, inventory, touch placement, replacement, reload, 390px layout, no JS errors. AI was an injected test fixture.')
     finally:
         proc.terminate();proc.wait(timeout=10)

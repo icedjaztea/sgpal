@@ -1,3 +1,14 @@
+BROWSER SHOP STAGE:
+PASS: 62 backend tests, including concurrent purchases, insufficient funds,
+forged prices, repeated operation IDs, spending rollback, slot/ownership checks,
+replacement without ownership loss and schema 1/2 -> 3 migration.
+PASS: browser earning -> cancelled preview -> purchase -> lost response/reload ->
+inventory -> touch placement -> insufficient funds -> replacement -> saved reload.
+Existing onboarding, mobile and gallery isolation checks also pass.
+AI recognition is injected for these tests; real reward/commerce transactions run.
+No Pi connection, hardware configuration, drivers or kiosk services changed.
+Window plant reuses approved art; cup and tile are simple placeholder icons.
+
 HONESTY-BASED HACKATHON UPDATE:
 54 backend tests cover schema/catalogue checks, correction disagreement, no reward
 on uncertainty/failure, once-only discovery and self-reported quest completion,

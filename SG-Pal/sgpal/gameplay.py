@@ -13,6 +13,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from core import BY_ID, Store, digest
+from sgpal.commerce import BY_ITEM, BY_SLOT
 
 DISCOVERY_XP, DISCOVERY_COINS = 10, 5
 QUEST_XP, QUEST_COINS = 25, 10
@@ -74,13 +75,15 @@ class GameStore:
             db.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             version = db.execute("SELECT value FROM meta WHERE key='version'").fetchone()
             if version:
-                if version['value'] not in ('1', '2'):
+                if version['value'] not in ('1', '2', '3'):
                     raise GameError(503, 'Unsupported gameplay save version. Save preserved.')
                 snapshot = db.execute("SELECT value FROM meta WHERE key='legacy_snapshot'").fetchone()
                 if snapshot and json.loads(snapshot['value']) != legacy_progress(self.directory):
                     raise GameError(503, 'Original progress changed after migration. Both saves are preserved; reconcile them before continuing.')
                 if version['value'] == '1':
                     self.migrate_quest_answers(db)
+                if version['value'] in ('1', '2'):
+                    self.migrate_commerce(db)
                 return
             old = legacy_progress(self.directory)
             statements = [
@@ -103,6 +106,7 @@ class GameStore:
             db.execute("INSERT INTO meta VALUES('legacy_snapshot',?)", (json.dumps(old),))
             db.execute("INSERT INTO meta VALUES('version','1')")
             self.migrate_quest_answers(db)
+            self.migrate_commerce(db)
 
     @staticmethod
     def migrate_quest_answers(db):
@@ -110,11 +114,60 @@ class GameStore:
         db.execute('CREATE TABLE quest_answers (id TEXT PRIMARY KEY, culture_id TEXT NOT NULL REFERENCES quests(culture_id), done INTEGER NOT NULL, result TEXT NOT NULL)')
         db.execute("UPDATE meta SET value='2' WHERE key='version'")
 
+    @staticmethod
+    def migrate_commerce(db):
+        db.execute('CREATE TABLE inventory (item_id TEXT PRIMARY KEY, purchased_sgt TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0))')
+        db.execute('CREATE TABLE room (slot_id TEXT PRIMARY KEY, item_id TEXT NOT NULL UNIQUE REFERENCES inventory(item_id))')
+        db.execute('CREATE TABLE commerce_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, result TEXT NOT NULL)')
+        db.execute("UPDATE meta SET value='3' WHERE key='version'")
+
+    def commerce(self, oid, kind, item_id, slot_id=None):
+        if kind not in ('purchase', 'place') or item_id not in BY_ITEM:
+            raise GameError(422, 'Choose an available shop item.')
+        item = BY_ITEM[item_id]
+        if kind == 'place' and (slot_id not in BY_SLOT or slot_id not in item['slots']):
+            raise GameError(422, 'Choose a compatible room slot.')
+        fingerprint = json.dumps([kind, item_id, slot_id])
+        self.initialise()
+        with self.connection() as db:
+            old = db.execute('SELECT * FROM commerce_operations WHERE id=?', (oid,)).fetchone()
+            if old:
+                if old['fingerprint'] != fingerprint:
+                    raise GameError(409, 'Request ID was already used for another action.')
+                return json.loads(old['result'])
+            for table in ('operations', 'quest_answers'):
+                if db.execute(f'SELECT 1 FROM {table} WHERE id=?', (oid,)).fetchone():
+                    raise GameError(409, 'Request ID was already used for another action.')
+            owned = db.execute('SELECT 1 FROM inventory WHERE item_id=?', (item_id,)).fetchone()
+            result = {'operation_id': oid, 'kind': kind, 'item_id': item_id, 'charged': 0}
+            if kind == 'purchase':
+                price = item['price']
+                balance = db.execute('SELECT coins FROM wallet WHERE id=1').fetchone()['coins']
+                if owned:
+                    result['status'] = 'owned'
+                elif balance < price:
+                    result.update(status='insufficient', needed=price-balance)
+                else:
+                    db.execute('UPDATE wallet SET coins=coins-? WHERE id=1', (price,))
+                    db.execute('INSERT INTO inventory VALUES(?,?,?)', (item_id, singapore_time(time.time()), price))
+                    result.update(status='purchased', charged=price)
+            else:
+                if not owned:
+                    raise GameError(409, 'Buy this decoration before placing it.')
+                # Move a single owned item; replacing another decoration keeps both owned.
+                db.execute('DELETE FROM room WHERE item_id=?', (item_id,))
+                db.execute('INSERT INTO room VALUES(?,?) ON CONFLICT(slot_id) DO UPDATE SET item_id=excluded.item_id', (slot_id, item_id))
+                result.update(status='placed', slot_id=slot_id)
+            db.execute('INSERT INTO commerce_operations VALUES(?,?,?)', (oid, fingerprint, json.dumps(result)))
+            return result
+
     def answer_quest(self, oid, cid, done):
         if cid not in BY_ID or type(done) is not bool:
             raise GameError(422, 'Choose a catalogue quest and Done or Not yet.')
         self.initialise()
         with self.connection() as db:
+            if db.execute('SELECT 1 FROM commerce_operations WHERE id=?', (oid,)).fetchone():
+                raise GameError(409, 'Request ID was already used for a decoration action.')
             previous = db.execute('SELECT * FROM quest_answers WHERE id=?', (oid,)).fetchone()
             if previous:
                 if previous['culture_id'] != cid or bool(previous['done']) != done:
@@ -149,7 +202,9 @@ class GameStore:
             reported = {r['culture_id'] for r in db.execute("SELECT culture_id FROM quest_answers WHERE done=1 AND json_extract(result, '$.status')='completed'")}
             for cid, detail in details.items():
                 detail['completion_method'] = ('self_reported' if cid in reported else 'photo_verified' if detail['evidence_url'] else 'legacy') if detail['completed'] else None
-            return {'xp': wallet['xp'], 'coins': wallet['coins'], 'active': wallet['active'], 'log': log, 'completed': [r['culture_id'] for r in quests if r['completed']], 'quest_details': details}
+            return {'xp': wallet['xp'], 'coins': wallet['coins'], 'active': wallet['active'], 'log': log, 'completed': [r['culture_id'] for r in quests if r['completed']], 'quest_details': details,
+                    'inventory': [r['item_id'] for r in db.execute('SELECT item_id FROM inventory ORDER BY purchased_sgt,item_id')],
+                    'room': {r['slot_id']: r['item_id'] for r in db.execute('SELECT * FROM room')}}
 
     @staticmethod
     def operation_result(row):
@@ -161,6 +216,9 @@ class GameStore:
             raise GameError(404, 'Request not found. Choose the photo again.')
         self.initialise()
         with self.connection() as db:
+            commerce = db.execute('SELECT result FROM commerce_operations WHERE id=?', (oid,)).fetchone()
+            if commerce:
+                return json.loads(commerce['result'])
             answer = db.execute('SELECT result FROM quest_answers WHERE id=?', (oid,)).fetchone()
             if answer:
                 return json.loads(answer['result'])
@@ -176,6 +234,8 @@ class GameStore:
         now, lease = time.time(), str(uuid.uuid4())
         fingerprint = digest(photo) + ':' + kind + ':' + str(target) + ':' + str(source)
         with self.connection() as db:
+            if db.execute('SELECT 1 FROM commerce_operations WHERE id=?', (oid,)).fetchone():
+                raise GameError(409, 'Request ID was already used for a decoration action.')
             if db.execute('SELECT 1 FROM quest_answers WHERE id=?', (oid,)).fetchone():
                 raise GameError(409, 'Request ID was already used for a quest answer.')
             row = db.execute('SELECT * FROM operations WHERE id=?', (oid,)).fetchone()
