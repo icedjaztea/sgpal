@@ -383,3 +383,6 @@ Browser scan results use short Spotted / Singapore connection cards. Confident S
 
 ### Scan participation coin
 Each successfully completed, schema-valid AI scan now earns 1 Kopi Coin, including uncertain/unrelated results and deliberate repeat scans. This is a participation reward, not confirmation of cultural identification, and grants no XP. Capture alone, failed/invalid AI calls and corrections earn no coin. Retrying the same operation cannot pay twice. Confirmed first discoveries retain their separate 10 XP / 5 coin bonus. Existing saved results are not rewarded retroactively.
+
+### Ten open quests
+All ten curated quests are available immediately in Quests, with no discovery prerequisite: chope etiquette, kopi ordering, tray return, kaya toast, hawker menus, MRT manners, shared HDB spaces, shophouse walkways, pasar malam, and Singlish. Each pays 25 XP and 10 Kopi Coins once after “Yes, I did it”; “Not yet” pays nothing. Schema 4 preserves existing quest completions, answer IDs, balances and photos while removing the discovery prerequisite. Completing a quest never fabricates a CultureDex discovery.

@@ -181,7 +181,7 @@ register('live-info','Saved discovery details',1,()=>{
  rail([['Story',()=>nav('live-story')],['Quest',()=>{detailPage=0;nav('live-quest')}],['Back',()=>nav('07')]]);
 },{});
 liveView('09',()=>{
- const entries=catalogue.filter(c=>saved.discoveries.includes(c.id)).map(item=>{
+ const entries=catalogue.map(item=>{
   const status=(saved.completed||[]).includes(item.id)?'DONE':saved.active===item.id?'ACTIVE':'OPEN';
   return [status+': '+item.title.slice(0,16),()=>{selectedEntry=item;detailPage=0;nav('live-quest')}];
  });
