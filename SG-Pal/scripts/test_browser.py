@@ -40,7 +40,7 @@ def screen(page, current):
 
 
 def boot(page, url):
-    page.goto(url)
+    page.goto(url+'/?kiosk=1')
     page.wait_for_function('window.SGPal?.inspect().ready')
     screen(page, '01')
 
@@ -189,7 +189,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
             (data/'demo-progress.json').write_text(json.dumps({'xp':999,'log':{},'completed':[],'active':None}))
             before=(data/'progress.json').read_bytes()
             page=browser.new_page();page.on('pageerror', lambda e: errors.append(str(e)))
-            page.goto(url); screen(page,'04'); assert inspect(page)['saved']['xp']==85
+            page.goto(url+'/?kiosk=1'); screen(page,'04'); assert inspect(page)['saved']['xp']==85
             choose(page,'Menu'); choose(page,'CultureDex'); choose(page,'#001 CHOPE CULTURE'); screen(page,'live-story')
             choose(page,'Info'); screen(page,'live-info'); choose(page,'Quest'); screen(page,'live-quest')
             choose(page,'Back'); screen(page,'09'); choose(page,'ACTIVE: Kopi time'); screen(page,'live-quest')

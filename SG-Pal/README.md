@@ -357,3 +357,6 @@ Progress lives outside the code: `~/.local/share/sgpal/progress.json`, with sepa
 Hardware adapters were written for this package using the vendor's register values as reference. Display transfer uses RGB565 with explicit inclusive address bounds. DejaVu Sans is bundled with its licence. Pixel creature is original code-drawn artwork. No API keys or uploaded personal photographs are bundled.
 
 For the two-minute browser presentation and failure fallbacks, see [DEMO.md](DEMO.md).
+
+The browser now opens as a responsive full-window game. Use `/?kiosk=1` for the
+original 320 × 240 compact layout; both share the same progress and backend.

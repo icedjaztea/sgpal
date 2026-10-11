@@ -19,13 +19,10 @@ OUT=ROOT/'test-results';OUT.mkdir(exist_ok=True)
 def info(page):return page.evaluate('SGPal.inspect()')
 def screen(page,name):page.wait_for_function('(name)=>SGPal.inspect().current===name',arg=name)
 def choose(page,label):
-    for _ in range(20):
-        state=info(page)
-        assert label in state['choices'],(label,state)
-        if state['choices'][state['focus']]==label:
-            page.keyboard.press('Enter');return
-        page.keyboard.press('ArrowRight')
-    raise AssertionError('Focus not found')
+    assert label in info(page)['choices'],(label,info(page))
+    button=page.locator('#game-actions').get_by_role('button',name=label,exact=True)
+    button.focus();button.press('Enter')
+
 
 
 with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
@@ -48,10 +45,15 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             context=browser.new_context(viewport={'width':390,'height':844},has_touch=True)
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(url);screen(page,'01');assert page.locator('#photo').get_attribute('capture') is None;page.locator('#screen').focus()
-            choose(page,'Start');choose(page,'otter');choose(page,'Choose');choose(page,'Keep');screen(page,'04')
+            start=page.locator('#game-actions').get_by_role('button',name='Start',exact=True)
+            start.focus();start.press('ArrowRight');assert info(page)['focus']==1
+            page.keyboard.press('ArrowLeft');assert info(page)['focus']==0
+            for label in ['Start','otter','Choose','Reroll','Keep']:
+                page.locator('#game-actions').get_by_role('button',name=label,exact=True).tap()
+            screen(page,'04');assert info(page)['saved']['name']=='Pebble'
             choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo')
             page.route('**/api/scan',lambda route:route.fulfill(status=502,content_type='application/json',body='{"detail":"TEST: AI service unavailable. Retry."}'))
-            page.locator('#screen').focus();choose(page,'Analyse');screen(page,'live-request-error')
+            choose(page,'Analyse');screen(page,'live-request-error')
             assert info(page)['saved']['xp']==0 and info(page)['saved']['coins']==0
             page.unroute('**/api/scan');choose(page,'Retry');screen(page,'live-candidate')
             assert info(page)['saved']['xp']==0
@@ -88,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Quest');screen(page,'live-quest');assert 'Answer' not in info(page)['choices']
             # Reload reads committed reward and persisted photos.
             page.reload();screen(page,'04');assert info(page)['saved']['coins']==15
-            page.locator('#screen').focus();choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo');page.locator('#screen').focus();choose(page,'Analyse');screen(page,'live-candidate')
+            choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo');choose(page,'Analyse');screen(page,'live-candidate')
             choose(page,'Correct');choose(page,'Kaya toast');screen(page,'live-candidate');choose(page,'Yes');screen(page,'live-reward')
             assert info(page)['saved']['xp']==35 and info(page)['saved']['coins']==15
             assert info(page)['saved']['completed']==['kaya']
@@ -107,14 +109,13 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Back');screen(page,'12');assert info(page)['saved']['room']=={}
             choose(page,'Window plant');screen(page,'live-placement')
             # Touch uses the same Save action as keyboard/rotary.
-            box=page.locator('#screen').bounding_box();scale=box['width']/320
-            page.touchscreen.tap(box['x']+45*scale,box['y']+208*scale)
+            page.locator('#game-actions').get_by_role('button',name='Save',exact=True).tap()
             screen(page,'live-commerce-result');assert info(page)['saved']['room']=={'window':'window_plant'}
-            page.locator('#screen').focus();choose(page,'Home');screen(page,'04')
+            choose(page,'Home');screen(page,'04')
             page.screenshot(path=str(OUT/'decorated-room.png'))
             page.reload();screen(page,'04');assert info(page)['saved']['room']=={'window':'window_plant'}
             assert info(page)['saved']['coins']==7 and info(page)['saved']['inventory']==['window_plant']
-            page.locator('#screen').focus();choose(page,'Menu');choose(page,'Shop')
+            choose(page,'Menu');choose(page,'Shop')
             choose(page,'Next');choose(page,'Next');choose(page,'Buy');choose(page,'Confirm');screen(page,'live-commerce-result')
             assert info(page)['saved']['coins']==7 and info(page)['saved']['inventory']==['window_plant']
             page.screenshot(path=str(OUT/'shop-insufficient.png'))
@@ -141,8 +142,55 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             assert info(page)['saved']['room']=={'window':'kopi_cup'}
             assert page.evaluate('SGPal.audit()')==[]
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            # Default responsive presentation: representative desktop, tablet,
+            # phone portrait/landscape. These are emulated viewports, not devices.
+            baseline=info(page)['saved']
+            for label,width,height in [('desktop',1440,900),('wide',1920,1080),('laptop',1280,720),('tablet',768,1024),('phone',390,844),('small-phone',320,568),('landscape',844,390)]:
+                page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(150)
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),label
+                shell=page.locator('#browser-shell').bounding_box()
+                assert abs(shell['y']+shell['height']-height)<2,(label,shell)
+                art=page.locator('#room-art').bounding_box()
+                assert abs(art['width']/art['height']-320/168)<.01,(label,art)
+                nav=page.locator('#game-nav').bounding_box()
+                assert nav['y']+nav['height']<=height+1,(label,nav)
+                if width>800:
+                    assert art['y']>=0 and art['y']+art['height']<=height,(label,art)
+                assert info(page)['saved']==baseline
+                page.screenshot(path=str(OUT/('responsive-'+label+'.png')))
+            page.set_viewport_size({'width':390,'height':844})
+            page.locator('#game-nav').get_by_role('button',name='Scan',exact=True).click();screen(page,'05')
+            page.evaluate("()=>{navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(new Error('denied'),{name:'NotAllowedError'}))}")
+            choose(page,'Camera');screen(page,'05error');assert page.locator('#game-actions').get_by_role('button',name='Upload',exact=True).is_visible()
+            choose(page,'Back');choose(page,'Back');screen(page,'04')
+            page.locator('#game-nav').get_by_role('button',name='Quests',exact=True).click();screen(page,'09')
+            page.locator('#panel-close').click();screen(page,'04menu')
+            page.locator('#game-nav').get_by_role('button',name='Home',exact=True).click();screen(page,'04')
+            page.emulate_media(reduced_motion='reduce')
+            assert page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
+            assert page.locator('#game-actions button').first.evaluate("el=>getComputedStyle(el).transitionDuration")=='0s'
+            page.set_viewport_size({'width':1440,'height':900})
+            if page.locator('#fullscreen').is_visible():
+                page.locator('#fullscreen').click()
+                if page.evaluate('!!document.fullscreenElement'):
+                    page.wait_for_function("document.getElementById('fullscreen').textContent==='Exit fullscreen'")
+                    page.locator('#fullscreen').click()
+                    page.wait_for_function('!document.fullscreenElement')
+            # Browser gallery remains visibly isolated and cannot mutate progress.
+            page.evaluate("SGPal.preview('11confirm')")
+            assert page.locator('#mode').inner_text().startswith('DESIGN PREVIEW')
+            page.evaluate('SGPal.press()');assert info(page)['saved']==baseline
+            page.locator('#live').click();screen(page,'04');assert page.locator('#browser-shell').is_visible()
+            # Unavailable fullscreen does not block normal windowed play.
+            page.add_init_script("Object.defineProperty(document,'fullscreenEnabled',{get:()=>false})")
+            page.reload();screen(page,'04');assert not page.locator('#fullscreen').is_visible()
+            assert info(page)['saved']==baseline
+            # Switching layout reads the same server progress.
+            page.goto(url+'/?kiosk=1');screen(page,'04');assert info(page)['saved']==baseline
+            assert page.locator('#screen').bounding_box()['width']==320
+            page.screenshot(path=str(OUT/'responsive-compact.png'))
             assert not errors,errors
             browser.close()
-            print('PASS: full UI flow, correction, lost-response reconciliation, persisted photos, Not yet, Done, failed-delivery retry across reload, exactly-once discovery/quest rewards, earned-coin purchases, cancel, insufficient funds, inventory, touch placement, replacement, reload, 390px layout, no JS errors. AI was an injected test fixture.')
+            print('PASS: full UI flow, correction, lost-response reconciliation, persisted photos, Not yet, Done, failed-delivery retry across reload, exactly-once discovery/quest rewards, earned-coin purchases, cancel, insufficient funds, inventory, touch placement, replacement, reload, responsive desktop/tablet/phone portrait and landscape, fullscreen/fallback, compact switch, no JS errors. AI was an injected test fixture.')
     finally:
         proc.terminate();proc.wait(timeout=10)

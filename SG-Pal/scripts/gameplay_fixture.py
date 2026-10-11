@@ -30,7 +30,7 @@ app = FastAPI()
 @app.get('/')
 def index():
     html=(server.ROOT/'web/index.html').read_text()
-    return HTMLResponse(html.replace('<body>', '<body><p style="margin:0;background:#29334a;color:#f7e8ca;text-align:center">TEST FIXTURE — simulated AI, temporary progress</p>'))
+    return HTMLResponse(html.replace('<body>', '<body><style>#browser-shell{height:calc(100dvh - 24px)}</style><p style="height:24px;margin:0;background:#29334a;color:#f7e8ca;text-align:center;font:12px/24px system-ui">TEST AI · simulated recognition · temporary save</p>'))
 
 
 app.mount('/',server.app)
