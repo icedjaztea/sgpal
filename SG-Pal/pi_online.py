@@ -103,7 +103,7 @@ def run(args):
     try:
         active=PROFILE/'DevToolsActivePort'
         if active.exists():active.unlink()
-        browser=subprocess.Popen(['chromium','--headless=new','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--password-store=basic','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--window-size=320,240','--user-data-dir='+str(PROFILE),URL],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        browser=subprocess.Popen(['chromium','--headless=new','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--password-store=basic','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--window-size=320,240','--user-data-dir='+str(PROFILE),URL+('&touch=1' if args.touch else '')],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         deadline=time.monotonic()+90
         while time.monotonic()<deadline and not stopped:
             if browser.poll() is not None:raise RuntimeError('Chromium stopped during startup')
@@ -146,6 +146,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['run','restore','key','status'])
     parser.add_argument('key',nargs='?',choices=['ArrowLeft','ArrowRight','Enter','Escape','Tab'])
+    parser.add_argument('--touch',action='store_true',help='Show touch navigation; does not configure a touch driver')
     parser.add_argument('--controls',action='store_true');parser.add_argument('--camera',action='store_true')
     args=parser.parse_args()
     if args.action=='run':run(args);return
@@ -157,7 +158,7 @@ def main():
         else:
             code=getpass.getpass('Private recovery code (hidden; never logged): ')
             # Same authenticated, CSRF-protected recovery API as the browser UI.
-            expression="(async()=>{const r=await fetch('/api/auth/recovery/restore',{method:'POST',headers:{'Content-Type':'application/json',...SGPalAccount.headers()},body:JSON.stringify({code:"+json.dumps(code)+"})});if(r.ok){return {ok:true}}const body=await r.json();return {ok:false,message:body.detail}})()"
+            expression="(async()=>{const r=await fetch('/api/auth/recovery/restore',{method:'POST',headers:{'Content-Type':'application/json',...SGPalAccount.headers()},body:JSON.stringify({code:"+json.dumps(code)+"})});if(r.ok){return {ok:true}}const body=await r.json();return {ok:false,message:typeof body.detail==='string'?body.detail:'Restore failed'}})()"
             result=cdp.evaluate(expression);code='';expression=''
             if not result or not result.get('ok'):raise RuntimeError((result or {}).get('message','Restore failed'))
             cdp.call('Page.reload')

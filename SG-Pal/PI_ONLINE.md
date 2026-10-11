@@ -78,3 +78,8 @@ fi
 ```
 
 No display driver replacement, forced Git update, secret transfer, local player database or reboot is required. Physical screen orientation, each detent/press, real camera results and the user's private account restoration require on-device confirmation; remote screenshot delivery alone is not proof of those physical checks.
+
+### Touch LCD presentation
+Run `python3 pi_online.py run --touch` for on-screen Left, Select, Right and Back controls; tap a game choice once to activate. This leaves rotary and physical buttons disabled unless `--controls` is explicitly supplied. Browser URL: `https://sgpal.onrender.com/?kiosk=1&touch=1`.
+The touch controller must first appear as a Linux input device; SPI display output alone does not deliver taps. On this Pi, only HDMI input devices were detected. Touch driver/model identification and input forwarding remain required; do not guess GPIO wiring or change the working LCD driver.
+The Pi checkout now uses the public GitHub origin. After checking for local changes, update with `git fetch origin` and `git merge --ff-only origin/main`.
