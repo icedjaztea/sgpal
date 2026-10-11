@@ -1,0 +1,18 @@
+{
+  "model": "gpt-4.1-mini",
+  "spi_hz": 16000000,
+  "rotate_180": false,
+  "swap_red_blue": false,
+  "rotary_a": 5,
+  "rotary_b": 6,
+  "rotary_press": 13,
+  "back_button": 19,
+  "scan_button": 26,
+  "touch": false,
+  "buzzer": false,
+  "buzzer_pin": 16,
+  "led_ring": false,
+  "led_pin": 12,
+  "led_count": 24,
+  "led_brightness": 12
+}

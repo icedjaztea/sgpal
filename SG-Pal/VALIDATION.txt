@@ -1,0 +1,13 @@
+Validation performed 2026-10-11 in build environment:
+PASS: six unittest cases (persistence/reward deduplication, image normalisation,
+response validation, low-confidence no reward, quest result handling,
+demo isolation and screen renderability).
+PASS: complete simulated discovery + quest flow awards 10 + 25 XP.
+PASS: local HTTP HTML response, PNG screen delivery, valid action submission,
+and rejection of a cross-origin POST.
+PASS: Python compile checks and bash syntax checks.
+PASS: visual inspection of home, discovery, quest, log, creature and busy screens.
+NOT RUN: live OpenAI request; no secret was supplied to this environment.
+NOT RUN: real Pi installation, LCD, CSI camera, encoder/buttons, touch,
+buzzer, WS2812 ring, service boot, hotspot/SSH or powerbank validation.
+See README.md acceptance checklist before presenting a hardware demo.
