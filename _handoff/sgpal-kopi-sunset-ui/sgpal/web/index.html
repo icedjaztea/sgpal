@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#29334a"><title>SG Pal · Kopi Sunset</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><main>
+<header class="surround"><p class="eyebrow">SG PAL / KOPI SUNSET</p><h1>A little home.<br>A whole neighbourhood.</h1><p>Runnable screen-design prototype · 320 × 240</p></header>
+<section class="device" aria-label="SG Pal handheld screen"><canvas width="320" height="240" id="screen" tabindex="0" aria-label="SG Pal screen"></canvas></section>
+<p id="mode" class="surround" role="status"></p>
+<nav class="controls surround" aria-label="Rotary control simulator"><button id="left" aria-label="Rotate counterclockwise">↶ Turn</button><button id="press">Press</button><button id="right" aria-label="Rotate clockwise">Turn ↷</button></nav>
+<div id="accessible" class="sr-only" aria-live="polite"></div>
+<details class="surround" id="review"><summary>Review all screen designs</summary><p>Design previews use sample data. They never change your saved game.</p><label for="scene">Screen</label><select id="scene"></select><button id="live">Return to my Pal</button></details>
+<p class="hint surround">Keyboard: ← / → to turn · Enter to press · Esc to go back.<br>On phone, tap a choice once to focus it, then tap again to select.</p>
+<p class="hint surround">AI recognition, Pi camera/GPIO, cloud sync and social services are not connected in this prototype.</p>
+<input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+<video id="camera" playsinline autoplay muted hidden></video>
+</main><script src="app.js"></script></body></html>

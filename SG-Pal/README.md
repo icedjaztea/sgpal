@@ -1,9 +1,76 @@
+# SG Pal · Kopi Sunset browser integration
+
+The approved 320 × 240 browser experience is now in `sgpal/web/`, served by
+`sgpal/server.py` (FastAPI). The original Python/Pillow app, its scanning and
+quest logic, culture catalogue, hardware adapters and tests are retained below.
+
+## Run the new browser experience
+
+On macOS you can double-click `Start SG Pal.command` in Finder. Keep its Terminal
+window open while playing. If SG Pal is already running, the launcher opens the
+kiosk URL. The local URLs require the server to be running on this Mac.
+
+From the shared repository, create a local environment on first setup:
+
+```bash
+cd sgpal/SG-Pal
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-web.txt
+SGPAL_DATA_DIR=./data/browser python -m uvicorn sgpal.server:app --host 127.0.0.1 --port 8000
+```
+
+Open **http://127.0.0.1:8000**. The preview uses an ignored `data/browser/` save
+folder. Browser acceptance tests use separate temporary folders.
+
+For the exact handheld display, open **http://127.0.0.1:8000/?kiosk=1**.
+The shared UI runs in a Pi browser, laptop browser or phone browser. Connecting
+this renderer to the existing raw SPI display, GPIO and CSI camera is still
+pending; the original `python app.py --pi` hardware runtime remains available.
+
+For a phone on the same trusted LAN, replace `--host 127.0.0.1` with
+`--host 0.0.0.0`, then visit `http://<computer-or-pi-IP>:8000`. All visitors to
+that server share one device save. Phone camera access over ordinary LAN HTTP
+may be unavailable; use the photo picker, or configure HTTPS.
+
+Working: Merlion/Otter/Mynah adoption and saved BTO home, shared input,
+photo capture/upload, real OpenAI recognition, catalogue correction/reassessment,
+confirmation, saved CultureDex photos, assigned quests and Done / Not yet answers
+with exactly-once rewards. New discoveries earn 10 XP + 5 Kopi Coins; marking a
+quest Done earns 25 XP + 10 coins. Completion is player-reported, with no photo
+verification required. Uncertain/failed results earn nothing.
+
+Use your existing Common Ground key. Check Settings or `/api/status` for credential
+presence (this does not validate API billing/access). If missing, configure it
+through the local hidden prompt, never through chat or browser code:
+
+```bash
+.venv/bin/python configure_key.py
+```
+
+The key is stored outside Git at `~/.config/sgpal/credentials.json`; requests read
+it when needed, so no restart is required after configuration. Nothing creates a
+new key. Click Analyse deliberately to send a photo to OpenAI. Real photos and
+Singapore-time records save to the local gameplay database. Existing JSON progress
+is imported once without altering it or granting retroactive coins.
+
+Shop, decoration, accounts/sync, pairing and friends remain deferred. The original
+native `app.py --pi` runtime is retained; it does not yet render the new browser UI.
+After migration, continue that save through FastAPI; changing its original JSON
+with the old runtime creates a detected conflict rather than silently losing data.
+
+See [KOPI_SUNSET.md](KOPI_SUNSET.md) for save compatibility, controls, validation,
+architecture and remaining connections. The original hardware build instructions follow for compatibility; their older
+photo-verification flow belongs to `app.py`, not the new shared browser game.
+
+---
+
 # SG Pal · Common Ground
 ## Start here — build dated 11 October 2026
 
 A complete source package for your Raspberry Pi 3B+, Waveshare **2.8inch Capacitive Touch LCD (240×320)**, Camera Rev 1.3 and rotary controls. The interface renders at **320×240 landscape**. AI runs through your OpenAI API key named **Common Ground**, with `gpt-4.1-mini` configurable in `config.json`.
 
-**Status:** software logic tests and rendered screen inspection completed. Real Pi GPIO, screen orientation/colours, touch, camera, audio, LED timing and live OpenAI responses have NOT been tested on your device. Your SSH connection is still unresolved. This is a build to install and test, not a claim that your hardware is already working.
+**Status:** software logic tests and rendered screen inspection completed. The integrated FastAPI flow also passed live OpenAI recognition and quest verification using synthetic menu images and isolated test progress; see KOPI_SUNSET.md. Real-world photo accuracy, Pi GPIO, screen orientation/colours, touch, camera, audio and LED timing remain untested on your device. Your SSH connection is still unresolved. This is a build to install and test, not a claim that your hardware is already working.
 
 ### Included
 - Same pixel interface on the Pi and in a Mac browser preview.

@@ -93,7 +93,7 @@ class App:
             high=value['confidence']=='high'
             if self.quest_mode:
                 cid=self.store.data['active']
-                success=bool(cid and high and value['verified'] and self.store.finish(cid,digest(self.photo)))
+                success=bool(cid and value['culture_id']==cid and high and value['verified'] and self.store.finish(cid,digest(self.photo)))
                 self.note=('Quest complete! +25 XP. ' if success else 'Not verified yet. Try a clearer photo of the quest requirement. ')+value['observation']
                 self.set_screen('verified')
             else:
