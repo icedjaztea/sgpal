@@ -56,6 +56,7 @@ class Controls:
         rotary.when_rotated_counter_clockwise = lambda: queue.put(('prev',None))
         self.devices.append(rotary)
         for pin, action in [(config['rotary_press'],'select'),(config['back_button'],'back'),(config['scan_button'],'scan')]:
+            if pin is None: continue  # Unwired optional Back/Scan buttons.
             button = Button(pin,pull_up=True,bounce_time=.08)
             button.when_pressed = lambda a=action: queue.put((a,None))
             self.devices.append(button)

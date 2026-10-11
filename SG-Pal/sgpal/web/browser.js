@@ -28,14 +28,14 @@ $('return-home').onclick=()=>{SGPal.live();restoreToolbar()};
 $('settings-open').onclick=()=>{$('settings-dialog').showModal()};
 $('settings-close').onclick=()=>$('settings-dialog').close();
 $('settings-dialog').addEventListener('close',()=> $('settings-open').focus());
-$('account-dialog').addEventListener('close',()=> $('settings-open').focus());
+for(const id of ['account-dialog','friends-dialog'])$(id).addEventListener('close',()=> (document.body.classList.contains('kiosk')?$('screen'):$('settings-open')).focus());
 for(const [id,screen] of [['pal-open','04pal'],['profile-open','14'],['game-settings-open','18'],['decorate-open','13'],['pocket-open','04menu']])$(id).onclick=()=>{$('settings-dialog').close();actions.navigate(screen)};
 $('game-actions').addEventListener('focusin',e=>{for(const b of $('game-actions').children)b.classList.toggle('selected',b===e.target)});
 $('account-open').addEventListener('click',()=> $('settings-dialog').close());
 // Keyboard navigation is presentation-only; inputs retain normal cursor editing.
 window.addEventListener('keydown',e=>{
- if(!document.body.classList.contains('browser-game')||document.body.classList.contains('design-gallery')||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
  const modal=document.querySelector('dialog[open]');
+ if((!document.body.classList.contains('browser-game')&&!modal)||document.body.classList.contains('design-gallery')||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'].includes(e.key))return;
  if(e.key==='Escape'){
   e.preventDefault();e.stopImmediatePropagation();
@@ -46,13 +46,13 @@ window.addEventListener('keydown',e=>{
  }
  const panel=$('game-panel'),inWindow=previous!=='04';
  const scope=modal|| (inWindow?panel:$('browser-shell'));
- const controls=[...scope.querySelectorAll('button:not(:disabled),summary,a[href],input')].filter(n=>n.getClientRects().length&&!n.closest('[hidden]'));
+ const controls=[...scope.querySelectorAll('button:not(:disabled),summary,a[href],input')].filter(n=>n.getClientRects().length&&!n.closest('[hidden]')&&!(document.body.classList.contains('kiosk')&&n.tagName==='INPUT'));
  if(!controls.length)return;
  const at=controls.indexOf(document.activeElement);
  e.preventDefault();e.stopImmediatePropagation();
  if(e.key==='Enter'){if(!e.repeat)(at>=0?controls[at]:controls[0]).click();return}
  const step=['ArrowLeft','ArrowUp'].includes(e.key)?-1:1;
- controls[(at<0?0:(at+step+controls.length)%controls.length)].focus();
+ const next=controls[(at<0?0:(at+step+controls.length)%controls.length)];next.focus();next.scrollIntoView({block:'nearest'});
 },true);
 window.SGPalBrowser={render(data,controls){
  actions=controls;const {screen,saved,choices}=data;
