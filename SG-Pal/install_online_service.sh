@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 flags=''
 for arg in "$@"; do
-  case "$arg" in --controls|--camera) flags+=" $arg";; *) echo 'Use only verified --controls and/or --camera'; exit 2;; esac
+  case "$arg" in --controls|--camera|--touch) flags+=" $arg";; *) echo 'Use only verified --controls, --camera or --touch'; exit 2;; esac
 done
 mkdir -p "$HOME/.config/systemd/user"
 cat > "$HOME/.config/systemd/user/sgpal-online.service" <<EOF

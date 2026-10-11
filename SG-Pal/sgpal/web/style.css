@@ -5,3 +5,10 @@
 
 /* Keep the complete game visible on a typical laptop without fractional scaling. */
 @media(min-width:700px) and (max-height:850px){main{padding-top:12px}header{margin-bottom:12px}header .eyebrow{margin:4px}h1{font-size:26px;margin:6px}header>p:last-child{margin:6px}}
+
+/* Optional LCD touch controls; retain the canvas aspect ratio and every action. */
+body.touch-kiosk .device{height:208px;display:flex;justify-content:center;background:#29334a}
+body.touch-kiosk #screen{width:277.333px;height:208px}
+#touch-nav{display:flex;width:320px;height:32px;gap:2px;background:#29334a}
+#touch-nav button{flex:1;min-width:0;padding:0 2px;border-radius:0;font:bold 12px ui-monospace,monospace;touch-action:manipulation}
+#touch-nav button:focus-visible{outline:2px solid #e7ba62;outline-offset:-3px;background:#d98169}
