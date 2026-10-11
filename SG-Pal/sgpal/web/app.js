@@ -307,7 +307,7 @@ liveView('05',()=>{
 liveView('05photo',()=>{base('REVIEW PHOTO');picture();text('ANALYSE SENDS TO OPENAI',16,169);rail([['Analyse',analysePhoto],['Retry',()=>startScan()],['Back',()=>nav('05')]])});
 register('live-working','Saving or checking',1,()=>{const answering=['quests/answer','shop/purchase','room/place'].includes(activeRequest?.path);base(answering?'SAVING YOUR CHOICE':'CHECKING PHOTO');sprite(saved.species,120,32,80);lines([answering?'WAITING FOR SAVE.':'WAITING FOR AI RESPONSE.','NO REWARD CONFIRMED.','BACK KEEPS REQUEST ID.'],16,121);rail([['Back',closeRequest]])},{});
 register('live-candidate','Confirm culture suggestion',1,()=>{
- gameRead('IS THIS RIGHT?',(selectedEntry?.title||'Unknown')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
+ gameRead('IS THIS RIGHT?',(selectedEntry?.title||gameResult.discovery_title||'Your find')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
 },{});
 register('live-correction','Correct the suggestion',1,()=>{
  const entries=catalogue.map(c=>[c.title,()=>correctTo(c)]);
@@ -324,7 +324,7 @@ register('live-reward','Saved game result',1,()=>{
  base(gameResult.status==='duplicate'?'ALREADY RECORDED':quest?'QUEST COMPLETE!':'DISCOVERY SAVED!');
  sprite(saved.species,126,32,68);center((selectedEntry?.title||'SAVED').slice(0,24),111);
  frame(12,140,296,38,C.jade);text('+'+reward.xp+' XP / +'+reward.coins+' COINS',24,152);
- rail([['Dex',()=>{detailPage=0;nav('live-story')}],['Quest',()=>{detailPage=0;nav('live-quest')}],['Home',goHome]]);
+ if(gameResult.local_find)rail([['Scan',startScan],['Home',goHome]]);else rail([['Dex',()=>{detailPage=0;nav('live-story')}],['Quest',()=>{detailPage=0;nav('live-quest')}],['Home',goHome]]);
 },{});
 register('live-photo','Your saved photograph',1,()=>{
  base('SAVED PHOTO');if(storedPhoto)photoImage(storedPhoto);else lines(['LOADING PHOTO...','BACK AND RETRY IF NEEDED.'],16,70);
