@@ -1,3 +1,14 @@
+HONESTY-BASED HACKATHON UPDATE:
+54 backend tests cover schema/catalogue checks, correction disagreement, no reward
+on uncertainty/failure, once-only discovery and self-reported quest completion,
+Not yet, concurrency, retries, old saves and retired evidence-photo endpoints.
+Browser tests cover the complete flow, exact Yes, I did it / Not yet choices,
+injected AI failure, retry after reload, lost responses, mobile/kiosk layouts,
+shared input and isolation of gallery/demo data.
+Live recognition was tested separately on a synthetic kopi menu with temporary
+progress. No quest AI call or hardware validation is claimed.
+The history below documents earlier builds, including superseded photo checks.
+
 SHARED REPOSITORY UPDATE 2026-10-11:
 PASS: 51 backend/domain tests, including the original six; v1 -> v2 migration,
 Done/Not yet, concurrency, failed-save rollback, reward deduplication and photos.

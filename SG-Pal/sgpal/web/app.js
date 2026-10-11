@@ -40,7 +40,7 @@ function symbol(type,x,y){if(type==='coin'){frame(x+2,y,12,16,C.gold);rect(x,y+3
 function placeholderPhoto(x=20,y=40,w=280,h=116){frame(x,y,w,h,C.ink,C.wood);text('PHOTO AREA',x+Math.floor((w-118)/2),y+20,C.paper);text('NO SAMPLE PHOTO',x+Math.floor((w-178)/2),y+47,C.paper)}
 function register(id,title,phase,draw,meta){screens[id]={id,title,phase,draw,...meta};}
 function nav(id){stopCamera();current=id;focus=0;render();}
-function goHome(){scanQuest=null;nav('04')}
+function goHome(){nav('04')}
 function unavailable(title='Not connected'){nav('blocked');screens.blocked.context=title;render()}
 async function api(path,body){
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60000);
@@ -81,7 +81,7 @@ register('05','Camera scanner',1,()=>{base('CULTURE SCAN');frame(16,36,288,145,C
 register('05starting','Camera permission',1,()=>{base('OPENING CAMERA');sprite(state().species,122,40,76);lines(['WAITING FOR CAMERA','PERMISSION...'],42,133);rail([['Cancel',()=>nav('05')]])},{focus:'Cancel',click:'Cancels pending request in app; late media streams are immediately stopped.',back:'Cancel returns to scanner.',layout:'76x76 portrait; centered status; one action.',states:'Browser permission dialog owns approval. No success while permission unresolved.',motion:'Optional two-frame thinking loop.'});
 register('05live','Camera ready',1,()=>{base('CAMERA READY');if(stream){const v=document.getElementById('camera');ctx.save();ctx.imageSmoothingEnabled=true;const r=Math.min(288/v.videoWidth,152/v.videoHeight);ctx.drawImage(v,16+(288-v.videoWidth*r)/2,32+(152-v.videoHeight*r)/2,v.videoWidth*r,v.videoHeight*r);ctx.restore()}else{frame(16,32,288,152,C.ink);center('LIVE CAMERA AREA',82,C.paper);center('DESIGN PLACEHOLDER',108,C.paper)}rail([['Capture',capture],['Back',()=>nav('05')]])},{focus:'Capture > Back',click:'Capture freezes the real frame for review; no AI request is made in this prototype.',back:'Scanner and release camera.',layout:'Image16,32 288x152; fit/letterbox with normal photo interpolation.',states:'Gallery is explicitly a camera placeholder, not a fake photograph.',motion:'Live preview10fps; stop tracks on exit and page hide.'});
 register('05photo','Review your photo',1,()=>{base('REVIEW PHOTO');picture();rail([['Analyse',()=>nav('05ai')],['Retry',()=>{photo=null;nav('05')}],['Back',()=>nav('05')]])},{focus:'Analyse > Retry > Back',click:'Analyse currently shows integration-needed state. It never saves a discovery.',back:'Scanner. Captured photo remains memory-only until replaced or page closes.',layout:'Fit photograph in20,34 280x128; three-action rail.',states:'Oversized/unsupported files rejected before decode. No upload to external services.',motion:'Still photograph, no artificial pixel filter.'});
-register('05ai','AI not connected',1,()=>{base('AI NOT CONNECTED');sprite(state().species,126,31,68);lines(['YOUR PHOTO IS READY.','RECOGNITION NEEDS SETUP.','NO REWARDS WERE ADDED.'],10,119);rail([['Back',()=>nav('05photo')]])},{focus:'Back',click:'Returns to photo review.',back:'Review photo.',layout:'Status portrait; three14px lines; Back.',states:'Backend /api/scan and /api/verify return501. No credentials or API calls included.',motion:'Static integration-needed state.'});
+register('05ai','AI not connected',1,()=>{base('AI NOT CONNECTED');sprite(state().species,126,31,68);lines(['YOUR PHOTO IS READY.','RECOGNITION NEEDS SETUP.','NO REWARDS WERE ADDED.'],10,119);rail([['Back',()=>nav('05photo')]])},{focus:'Back',click:'Returns to photo review.',back:'Review photo.',layout:'Status portrait; three14px lines; Back.',states:'Historical disconnected design sample; real discovery uses the backend.',motion:'Static integration-needed state.'});
 register('05error','Camera unavailable',1,()=>{base('CAMERA UNAVAILABLE');symbol('lock',151,47);lines([lastCameraError,'TRY A PHOTO FROM YOUR','PHONE OR LAPTOP INSTEAD.'],16,95);rail([['Upload',choosePhoto],['Retry',camera],['Back',()=>nav('05')]])},{focus:'Upload > Retry > Back',click:'Upload uses picker; Retry requests permission again if browser allows.',back:'Scanner.',layout:'Icon and three lines; three actions.',states:'Distinct permission denial/insecure context/device absence message.',motion:'No indefinite loading spinner.'});
 register('06check','Check the AI suggestion',1,()=>{base('IS THIS RIGHT?');symbol('tissue',24,42);text('#001',110,40);text('CHOPE',110,65);text('CULTURE',110,86);lines(['A TISSUE CAN RESERVE','A SEAT AT A HAWKER TABLE.','CHECK THE CONTEXT FIRST.'],16,121);rail([['Yes',()=>nav('06')],['No',()=>nav('06wrong')],['Back',()=>nav('05')]])},{focus:'Yes > No > Back',click:'In future integrated flow, Yes confirms a vetted ID; No retakes/corrects without reward. Gallery only here.',back:'Scanner/review.',layout:'64x40 item illustration24,42; title110,40; 3 lines at121.',states:'Uncertain/no cultural match must not auto-save. Correction UI offers retry; no free-text requirement.',motion:'Small thinking reaction before decision, not a reward animation.'});
 register('06wrong','Try a clearer view',1,()=>{base('LET US TRY AGAIN');lines(['NO DISCOVERY SAVED.','TRY ANOTHER ANGLE OR','INCLUDE MORE CONTEXT.'],16,66);rail([['Retry',()=>nav('05')],['Back',()=>nav('06check')]])},{focus:'Retry > Back',click:'Retry opens scanner without granting anything.',back:'AI suggestion.',layout:'Three short lines and two actions.',states:'Future alternative candidates may replace retry when available.',motion:'Calm reaction; no punitive failure animation.'});
@@ -96,10 +96,10 @@ register('08locked','Unknown CultureDex entry',1,()=>{base('UNDISCOVERED');symbo
 register('09','Quest board',1,()=>{base('QUEST BOARD');if(gallery){row('ACTIVE: CHOPE SPOTTER',36,()=>nav('10'));row('COMPLETED QUESTS',78,()=>nav('09done'));row('LOCKED QUESTS',120,()=>nav('09locked'));rail([['Back',()=>nav('04menu')]])}else{lines(['NO QUESTS JUST YET.','DISCOVER LOCAL CULTURE','TO FIND YOUR FIRST QUEST.'],16,63);rail([['Scan',()=>startScan()],['Back',()=>nav('04menu')]])}},{focus:'Active quest > Completed > Locked > Back; empty: Scan > Back',click:'Open quest detail or selected status list.',back:'Pocket menu.',layout:'Three296x30 rows at36/78/120; Back below.',states:'Empty real save has no invented quest. Completed entry is non-claimable.',motion:'New quest can receive a brief marker, not constant flashing.'});
 register('09done','Completed quest',1,()=>{base('COMPLETED');lines(['KOPI EXPLORER','DONE - REWARD CLAIMED','+30 XP / +10 COINS','SAMPLE COMPLETED QUEST'],16,53);rail([['Back',()=>nav('09')]])},{focus:'Back',click:'No claim action for completed quest.',back:'Quest board.',layout:'Four lines with claim status.',states:'Sample only; no additional reward on revisit.',motion:'No repeated celebration.'});
 register('09locked','Locked quest',1,()=>{base('NOT QUITE YET');symbol('lock',150,43);lines(['HAWKER EXPLORER','DISCOVER A HAWKER CENTRE','TO UNLOCK THIS QUEST.'],16,98);rail([['Back',()=>nav('09')]])},{focus:'Back',click:'Read prerequisite.',back:'Quest board.',layout:'Lock and three lines.',states:'Prerequisite explicit; no selectable Verify.',motion:'None.'});
-register('10','Quest verification',1,()=>{base('CHOPE SPOTTER');lines(['FIND ANOTHER CHOPE ITEM.','SHOW THE TABLE CONTEXT.','LEAVE THE ITEM IN PLACE.'],16,41);frame(12,118,296,37,C.cream);text('+30 XP / +10 COINS',32,130);text('PHOTO CHECK REQUIRED',16,168);rail([['Verify',()=>gallery?nav('10wait'):nav('05')],['Back',()=>nav('09')]])},{focus:'Verify > Back',click:'Integrated version captures fresh evidence for this quest ID. Gallery opens checking sample.',back:'Quest board.',layout:'Three instructions; reward strip12,118 296x37; requirement y168.',states:'No success without verifier pass. In runnable prototype no live active quests exist.',motion:'Thinking loop only while an actual request is pending.'});
-register('10wait','Evidence being checked',1,()=>{base('CHECKING EVIDENCE');sprite(state().species,120,38,80);lines(['MATCHING YOUR PHOTO','TO THE QUEST...','NO REWARD CLAIMED YET.'],16,122);rail([['Cancel',()=>nav('10')]])},{focus:'Cancel',click:'Cancels request view; late response must be reconciled by backend operation ID.',back:'Quest detail.',layout:'80x80 sprite and 3 lines.',states:'Static sample does not auto-transition to success. Request timeout offers Retry/Back.',motion:'Target four-frame thinking loop; timer cannot imply a pass.'});
-register('10pass','Quest verified',1,()=>{base('QUEST VERIFIED!');sprite(state().species,125,31,70);center('CHOPE SPOTTER COMPLETE',110);frame(12,140,296,38,C.jade);text('+30 XP / +10 COINS',32,152);rail([['Done',()=>nav('09done')],['Home',goHome]])},{focus:'Done > Home',click:'Show completed record. Sample UI only; never reachable from a real unverified request.',back:'Home.',layout:'Portrait; title; reward strip; two actions.',states:'Render only after verified and committed, not from client timer or capture event.',motion:'One6-frame celebration; reduced motion still reward strip.'});
-register('10fail','Evidence needs another try',1,()=>{base('TRY ANOTHER PHOTO');lines(['THE TABLE IS NOT CLEAR.','INCLUDE THE CHOPE ITEM','AND THE TABLE AROUND IT.','NO REWARDS WERE ADDED.'],16,54);rail([['Retry',()=>nav('05')],['Back',()=>nav('10')]])},{focus:'Retry > Back',click:'Retry requests fresh evidence; Back retains quest.',back:'Quest detail.',layout:'Four short actionable lines.',states:'Needs-more-evidence differs from system error. No blame or punishment.',motion:'Quiet curious reaction, no red flashing.'});
+register('10','Honesty-based quest',1,()=>{base('CHOPE QUEST');lines(['NOTICE A RESERVED SEAT.','LEAVE BELONGINGS ALONE.','DID YOU COMPLETE IT?'],16,39);row('Yes, I did it',116,()=>nav('10pass'));row('Not yet',153,()=>nav('10fail'));rail([['Back',()=>nav('09')]])},{});
+register('10wait','Saving quest answer',1,()=>{base('SAVING ANSWER');lines(['SAMPLE PENDING SAVE.','NO REWARD CONFIRMED.'],16,66);rail([['Back',()=>nav('10')]])},{});
+register('10pass','Self-reported completion',1,()=>{base('QUEST COMPLETE!');lines(['SAMPLE: SELF-REPORTED','+25 XP / +10 COINS','NO REAL REWARD GRANTED.'],16,56);rail([['Done',()=>nav('09done')],['Home',goHome]])},{});
+register('10fail','Quest still active',1,()=>{base('TAKE YOUR TIME');lines(['YOUR QUEST STAYS ACTIVE.','NO PENALTY.','COME BACK WHEN READY.'],16,56);rail([['Back',()=>nav('10')]])},{});
 register('11','Kopi shop',2,()=>{base('KOPI SHOP',String(state().coins));symbol('plant',42,56);text('WINDOW PLANT',102,44);text('25 COINS',102,74);text(gallery?'YOU CAN AFFORD THIS.':'NEED 25 MORE COINS.',16,141);rail([['Buy',()=>nav(gallery?'11confirm':'11poor')],['Next',()=>nav('11unavailable')],['Back',()=>nav('04menu')]])},{focus:'Buy > Next > Back',click:'Buy opens confirmation only if affordable; actual purchase is not enabled in prototype.',back:'Pocket menu.',layout:'Item art40x60; label/price right; affordability line141.',states:'Insufficient coins and unavailable stock have separate states. Categories can reuse paged lists.',motion:'Focused item can rise1px; never jiggle disabled actions.'});
 register('11confirm','Confirm purchase',2,()=>{base('BUY WINDOW PLANT?');symbol('plant',141,40);lines(['PRICE: 25 COINS','BALANCE AFTER: 55','OWNED AFTER PURCHASE: 1'],16,111);rail([['Confirm',()=>unavailable('Shop integration')],['Back',()=>nav('11')]])},{focus:'Confirm > Back',click:'Prototype reports not connected; future backend atomically debits25 and adds item.',back:'Shop, no purchase.',layout:'Item; price/balance/quantity; two actions.',states:'Recheck balance/owned state on server; reject duplicate transaction IDs.',motion:'Purchase reaction only after committed response.'});
 register('11poor','Insufficient coins',2,()=>{base('SAVE A FEW MORE');lines(['WINDOW PLANT: 25 COINS','YOUR COINS: 0','DISCOVER CULTURE TO EARN','MORE KOPI COINS.'],16,49);rail([['Explore',()=>startScan()],['Back',()=>nav('11')]])},{focus:'Explore > Back',click:'Explore opens scanner; no negative balance.',back:'Shop.',layout:'Four lines plus two actions.',states:'Price and gap visible before confirmation.',motion:'None.'});
@@ -159,7 +159,7 @@ register('live-info','Saved discovery details',1,()=>{
  const item=selectedEntry,record=saved.log?.[item?.id];if(!record){nav('07');return}
  base('DISCOVERY RECORD');
  const stamp=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(record.time*1000)).replace(',','');
- lines([stamp+' SGT','DISCOVERY XP: '+(record.xp||10),record.photo_url?'PHOTO SAVED ON DEVICE.':'LEGACY: NO PHOTO SAVED.','KOPI COINS: '+(record.coins||0)],10,48);
+ lines([stamp+' SGT','CULTURE XP: '+(record.xp||10),record.photo_url?'PHOTO SAVED ON DEVICE.':'LEGACY: NO PHOTO SAVED.','KOPI COINS: '+(record.coins||0)],10,48);
  if(record.photo_url)button('Photo',112,157,96,28,()=>showStoredPhoto(record.photo_url));
  rail([['Story',()=>nav('live-story')],['Quest',()=>{detailPage=0;nav('live-quest')}],['Back',()=>nav('07')]]);
 },{});
@@ -174,21 +174,29 @@ liveView('09',()=>{
 register('live-quest','Saved culture quest',1,()=>{
  const item=selectedEntry;if(!item){nav('09');return}
  const done=(saved.completed||[]).includes(item.id);
- gameRead(done?'QUEST COMPLETED':'CULTURE QUEST',item.quest+(done?' Completed. Reward already claimed.':' Reward: 25 XP and 10 Kopi Coins. Mark Done when you finish. No photo check.'),[...(done?[]:[['Done',()=>answerQuest(true)],['Not yet',()=>answerQuest(false)]]),['Back',()=>nav('09')]]);
+ gameRead(done?'QUEST COMPLETED':'CULTURE QUEST',item.quest+(done?' Completed. Reward already claimed.':' Reward: 25 XP and 10 Kopi Coins. Answer when you are ready. No proof needed.'),[...(done?[]:[['Answer',()=>nav('live-quest-answer')]]),['Back',()=>nav('09')]]);
+},{});
+register('live-quest-answer','Honesty-based quest answer',1,()=>{
+ if(!selectedEntry){nav('09');return}
+ base('YOUR QUEST');lines(['DID YOU COMPLETE','THIS QUEST?'],16,36);
+ row('Yes, I did it',94,()=>answerQuest(true));
+ row('Not yet',136,()=>answerQuest(false));
+ rail([['Back',()=>nav('live-quest')]]);
 },{});
 for(const id of ['13','13slot','13confirm'])liveView(id,()=>{base('DECORATE');lines(['YOUR INVENTORY IS EMPTY.','COLLECT FURNITURE FIRST.','DECORATING COMES LATER.'],16,61);rail([['Inventory',()=>nav('12')],['Back',()=>nav('04menu')]])});
 liveView('14more',()=>{base('ABOUT YOUR PAL');const personality={merlion:'CURIOUS AND BRAVE',otter:'PLAYFUL AND SOCIABLE',mynah:'BRIGHT AND CHATTY'};lines([personality[saved.species],'ACCESSORY: NONE','ACHIEVEMENTS: NONE','NO DAILY CARE REQUIRED.'],10,44);rail([['Back',()=>nav('14')]])});
 
 // Real game requests. Gallery never reaches these paths. Only the server can
 // change progress; pending IDs survive reload so lost responses can be checked.
-let scanQuest=null,photoPayload=null,activeRequest=null,gameResult=null,gameMessage='',gameBusy=false,requestView=0,correctionPage=0,storedPhoto=null;
+let photoPayload=null,activeRequest=null,gameResult=null,gameMessage='',gameBusy=false,requestView=0,correctionPage=0,storedPhoto=null;
 const pendingKey='sgpal-pending-operation-v1';
 const newId=()=>crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
-function startScan(quest=null){scanQuest=quest;photo=null;photoPayload=null;activeRequest=null;nav('05')}
+function startScan(){photo=null;photoPayload=null;activeRequest=null;nav('05')}
 function rememberRequest(){try{localStorage.setItem(pendingKey,JSON.stringify({id:activeRequest.body.operation_id,path:activeRequest.path,...(activeRequest.path==='quests/answer'?{body:activeRequest.body}:{})}))}catch(_){}}
 function forgetRequest(){try{localStorage.removeItem(pendingKey)}catch(_){}}
 function acceptResult(result){
- if(result.state)saved=result.state;gameResult=result;if(result.kind==='verify')scanQuest=result.quest_id||result.culture_id||scanQuest;
+ if(result.state)saved=result.state;gameResult=result;
+ if(result.kind==='verify'&&!['verified','duplicate'].includes(result.status)){forgetRequest();selectedEntry=catalogue.find(c=>c.id===result.quest_id);nav('live-quest');return}
  if(result.culture_id)selectedEntry=catalogue.find(c=>c.id===result.culture_id)||null;
  detailPage=0;
  if(result.status==='pending'){gameMessage='Still checking. No reward is confirmed. Check status shortly.';nav('live-request-error');return}
@@ -212,13 +220,13 @@ async function runGameRequest(){
 async function analysePhoto(){
  if(!photoPayload&&gameResult?.status==='candidate'){nav('live-candidate');return}
  if(!photoPayload){gameMessage='Choose a photo before analysis.';nav('live-request-error');return}
- activeRequest={path:scanQuest?'verify':'scan',body:{operation_id:newId(),image:photoPayload,...(scanQuest?{quest_id:scanQuest}:{})}};
+ activeRequest={path:'scan',body:{operation_id:newId(),image:photoPayload}};
  await runGameRequest();
 }
 async function retryRequest(){
  if(activeRequest){await runGameRequest();return}
  let pending;try{pending=JSON.parse(localStorage.getItem(pendingKey))}catch(_){}
- if(!pending){startScan(scanQuest);return}
+ if(!pending){startScan();return}
  activeRequest=pending.path==='quests/answer'&&pending.body?{path:pending.path,body:pending.body}:{path:'retry',body:{operation_id:pending.id}};await runGameRequest();
 }
 async function checkRequest(){
@@ -270,22 +278,21 @@ liveView('04',()=>{
  try{if(localStorage.getItem(pendingKey))button('Status',8,30,96,24,checkRequest)}catch(_){}
 });
 liveView('05',()=>{
- base(scanQuest?'QUEST EVIDENCE':'CULTURE SCAN');frame(16,36,288,145,C.ink);
+ base('CULTURE SCAN');frame(16,36,288,145,C.ink);
  center('OPEN CAMERA OR UPLOAD',56,C.paper);center('REVIEW BEFORE SENDING',96,C.paper);center('TO OPENAI FOR CHECKING.',120,C.paper);
- rail([['Camera',camera],['Upload',choosePhoto],['Back',()=>scanQuest?nav('live-quest'):goHome()]]);
+ rail([['Camera',camera],['Upload',choosePhoto],['Back',goHome]]);
 });
-liveView('05photo',()=>{base(scanQuest?'REVIEW EVIDENCE':'REVIEW PHOTO');picture();text('ANALYSE SENDS TO OPENAI',16,169);rail([['Analyse',analysePhoto],['Retry',()=>startScan(scanQuest)],['Back',()=>nav('05')]])});
+liveView('05photo',()=>{base('REVIEW PHOTO');picture();text('ANALYSE SENDS TO OPENAI',16,169);rail([['Analyse',analysePhoto],['Retry',()=>startScan()],['Back',()=>nav('05')]])});
 register('live-working','Saving or checking',1,()=>{const answering=activeRequest?.path==='quests/answer';base(answering?'SAVING YOUR ANSWER':'CHECKING PHOTO');sprite(saved.species,120,32,80);lines([answering?'WAITING FOR SAVE.':'WAITING FOR AI RESPONSE.','NO REWARD CONFIRMED.','BACK KEEPS REQUEST ID.'],16,121);rail([['Back',closeRequest]])},{});
 register('live-candidate','Confirm culture suggestion',1,()=>{
- gameRead('IS THIS RIGHT?',(selectedEntry?.title||'Unknown')+'. '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
+ gameRead('IS THIS RIGHT?',(selectedEntry?.title||'Unknown')+'. '+(selectedEntry?.fact||'')+' AI saw: '+gameResult.observation+' Confirm only if this matches your photo.',[['Yes',confirmDiscovery],['Correct',()=>{correctionPage=0;nav('live-correction')}],['Back',()=>nav('05photo')]]);
 },{});
 register('live-correction','Correct the suggestion',1,()=>{
  const entries=catalogue.map(c=>[c.title,()=>correctTo(c)]);
  pagedRows('CHECK ANOTHER ITEM',entries,correctionPage,p=>correctionPage=p,gameResult?.status==='candidate'?'live-candidate':'live-uncertain');
 },{});
 register('live-uncertain','Photo needs another look',1,()=>{
- const verification=gameResult?.kind==='verify';
- gameRead(verification?'NOT VERIFIED YET':'NOT SURE YET',(gameResult?.observation||'Try a clearer photo with more context.')+' No rewards were added.',[['Retry',()=>startScan(scanQuest)],...(verification?[]:[['Correct',()=>nav('live-correction')]]),['Back',()=>verification?nav('live-quest'):goHome()]]);
+ gameRead('NOT SURE YET',(gameResult?.observation||'Try a clearer photo with more context.')+' No rewards were added.',[['Retry',()=>startScan()],['Correct',()=>nav('live-correction')],['Back',goHome]]);
 },{});
 register('live-request-error','Request needs attention',1,()=>{
  gameRead('CHECK NOT FINISHED',gameMessage,[['Retry',retryRequest],['Status',checkRequest],['Back',closeRequest]]);

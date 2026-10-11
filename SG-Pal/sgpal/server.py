@@ -95,7 +95,7 @@ async def same_origin_writes(request: Request, call_next):
             return JSONResponse({"detail": "Cross-origin writes are not allowed."}, status_code=403)
     response = await call_next(request)
     if request.url.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-store"
+        response.headers.setdefault("Cache-Control", "no-store")
     return response
 
 
@@ -198,6 +198,8 @@ def photo_bytes(encoded):
 
 
 def assess(store, oid, kind, photo, target=None, source=None):
+    if kind != 'scan':
+        raise HTTPException(410, 'Quests are honesty-based. Open your quest and answer Yes, I did it or Not yet.')
     # A retry first consults the existing operation. Missing credentials must not
     # hide an already committed result, or trigger a duplicate provider request.
     if store.path.exists():
@@ -214,8 +216,7 @@ def assess(store, oid, kind, photo, target=None, source=None):
     if cached:
         return {**cached, 'state': read_state()}
     try:
-        result = recognise(photo, BY_ID[target] if kind == 'verify' else None,
-                           BY_ID[target] if kind == 'scan' and target else None)
+        result = recognise(photo, None, BY_ID[target] if target else None)
         store.finish(oid, lease, result)
         outcome = store.operation(oid)
     except (sqlite3.Error, OSError):
@@ -248,6 +249,10 @@ def retry(body: OperationBody):
     prior = store.operation(str(body.operation_id))
     if prior['kind'] == 'complete':
         return {**prior, 'state': read_state()}
+    if prior['kind'] == 'verify':
+        if prior['status'] in ('verified', 'duplicate'):
+            return {**prior, 'state': read_state()}
+        raise HTTPException(410, 'Photo checks are retired. Open the quest and answer Yes, I did it or Not yet.')
     kind, photo, target, source = store.retry_request(str(body.operation_id))
     return assess(store, str(body.operation_id), kind, photo, target, source)
 
@@ -262,9 +267,7 @@ def confirm(body: OperationBody):
 
 @app.post('/api/verify')
 def verify(body: VerifyBody):
-    if body.quest_id not in BY_ID:
-        raise HTTPException(422, 'Unknown quest.')
-    return assess(game_store(), str(body.operation_id), 'verify', photo_bytes(body.image), body.quest_id)
+    raise HTTPException(410, 'Quests are honesty-based. Use the quest answer screen; no evidence photo is required.')
 
 
 @app.post('/api/quests/activate')
@@ -287,7 +290,9 @@ def operation(operation_id: UUID):
 
 @app.get('/api/photos/{photo_id}')
 def photo(photo_id: UUID):
-    return Response(game_store().photo(str(photo_id)), media_type='image/jpeg', headers={'Cache-Control': 'private, no-store'})
+    return Response(game_store().photo(str(photo_id)), media_type='image/jpeg', headers={
+        'Cache-Control': 'private, no-store', 'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff'})
 
 
 app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")

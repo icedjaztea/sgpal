@@ -43,9 +43,10 @@ class App:
         if self.screen=='quest':
             cid=self.store.data['active']
             if cid:
-                c=BY_ID[cid]; return 'Your next discovery',c['quest'],'Turn: read  /  Press: take photo'
-            return 'A quest awaits','Scan something new, then choose its quest. Complete a photo challenge for 25 XP.','Back: home'
-        if self.screen=='verified': return 'Quest check',self.note,'Press or Back: home'
+                c=BY_ID[cid]; return 'Your next discovery',c['quest'],'Turn: read / Press: answer / Back'
+            return 'A quest awaits','Scan something new, then choose its quest. Complete an activity for 25 Culture XP.','Back: home'
+        if self.screen=='quest_answer': return 'Did you complete this quest?', 'No proof needed. Choose Yes, I did it or Not yet.', 'Selected: '+['Yes, I did it','Not yet'][self.index]+' / Press / Back'
+        if self.screen=='verified': return 'Quest status',self.note,'Press or Back: home'
         return 'SG Pal','','Back: home'
 
     def worker(self,fn,kind):
@@ -58,14 +59,12 @@ class App:
         threading.Thread(target=run,daemon=True).start()
 
     def start_capture(self):
-        self.quest_mode=bool(self.store.data['active']) and (self.screen=='quest' or (self.screen in ('photo','capture_help') and self.quest_mode))
+        self.quest_mode=False
         if self.demo:
             from PIL import Image,ImageDraw
             im=Image.new('RGB',(320,240),'#E6DCC6'); d=ImageDraw.Draw(im)
             d.rectangle((60,100,250,190),fill='#B27E56'); d.rectangle((115,105,180,133),fill='white')
             d.text((35,40),'DEMO SCENE - NOT A REAL SCAN',fill='black')
-            # Distinct demo quest photo so duplicate guard still exercises the flow.
-            if self.quest_mode: d.rectangle((185,80,205,128),fill='#66AABB')
             out=io.BytesIO(); im.save(out,'JPEG'); self.photo=out.getvalue(); self.set_screen('photo')
         elif self.pi:
             from hardware import capture
@@ -73,9 +72,9 @@ class App:
         else: self.set_screen('capture_help')
 
     def analyse(self):
-        quest=BY_ID[self.store.data['active']] if self.quest_mode and self.store.data['active'] else None
-        if quest and digest(self.photo)==self.store.data['log'][quest['id']]['hash']:
-            self.error='This is the discovery photo again. Take a new photo showing the quest evidence.'; self.set_screen('error'); return
+        if self.quest_mode:
+            self.set_screen('quest'); return
+        quest=None
         self.busy_label='Checking your quest...' if quest else 'Looking closely...'
         if self.demo:
             def fake():
@@ -92,10 +91,8 @@ class App:
             self.result=value
             high=value['confidence']=='high'
             if self.quest_mode:
-                cid=self.store.data['active']
-                success=bool(cid and value['culture_id']==cid and high and value['verified'] and self.store.finish(cid,digest(self.photo)))
-                self.note=('Quest complete! +25 XP. ' if success else 'Not verified yet. Try a clearer photo of the quest requirement. ')+value['observation']
-                self.set_screen('verified')
+                self.note='Photo checks are retired. Answer the quest when ready.'
+                self.set_screen('quest'); return
             else:
                 self.cid=value['culture_id'] if high and value['culture_id'] in BY_ID else None
                 success=bool(self.cid)
@@ -109,7 +106,7 @@ class App:
             if self.pi or self.demo: return
             import base64
             try:
-                self.quest_mode=self.screen=='quest' or (self.screen=='capture_help' and self.quest_mode)
+                self.quest_mode=False
                 self.photo=normalise(base64.b64decode(value,validate=True)); self.set_screen('photo')
             except Exception: self.error='Could not open photo. Use JPEG, PNG or WebP under 6 MB.'; self.set_screen('error')
             return
@@ -123,6 +120,7 @@ class App:
         if action in ('next','prev'):
             delta=1 if action=='next' else -1
             if self.screen=='home': self.index=(self.index+delta)%4
+            elif self.screen=='quest_answer': self.index=(self.index+delta)%2
             elif self.screen=='log': self.index=(self.index+delta)%max(1,len(self.store.data['log']))
             else:
                 pages=max(1,(len(wrapped(self.content()[1],292))+6)//7)
@@ -135,7 +133,13 @@ class App:
                 else: self.set_screen(['home','log','quest','pal'][self.index])
             elif self.screen=='photo': self.analyse()
             elif self.screen=='quest':
-                if self.store.data['active']: self.start_capture()
+                if self.store.data['active']: self.set_screen('quest_answer')
+            elif self.screen=='quest_answer':
+                if self.index==1: self.set_screen('quest')
+                else:
+                    won=self.store.finish_self_reported(self.store.data['active'])
+                    self.note='Self-reported completion. +25 Culture XP.' if won else 'Already completed. No extra reward.'
+                    self.set_screen('verified')
             elif self.screen=='log':
                 ids=list(self.store.data['log'])
                 if ids: self.cid=ids[self.index%len(ids)]; self.set_screen('detail')

@@ -35,9 +35,9 @@ may be unavailable; use the photo picker, or configure HTTPS.
 
 Working: Merlion/Otter/Mynah adoption and saved BTO home, shared input,
 photo capture/upload, real OpenAI recognition, catalogue correction/reassessment,
-confirmation, saved CultureDex photos, assigned quests and Done / Not yet answers
+confirmation, saved CultureDex photos, assigned quests and Yes, I did it / Not yet answers
 with exactly-once rewards. New discoveries earn 10 XP + 5 Kopi Coins; marking a
-quest Done earns 25 XP + 10 coins. Completion is player-reported, with no photo
+quest complete earns 25 XP + 10 coins. Completion is player-reported, with no photo
 verification required. Uncertain/failed results earn nothing.
 
 Use your existing Common Ground key. Check Settings or `/api/status` for credential
@@ -60,8 +60,8 @@ After migration, continue that save through FastAPI; changing its original JSON
 with the old runtime creates a detected conflict rather than silently losing data.
 
 See [KOPI_SUNSET.md](KOPI_SUNSET.md) for save compatibility, controls, validation,
-architecture and remaining connections. The original hardware build instructions follow for compatibility; their older
-photo-verification flow belongs to `app.py`, not the new shared browser game.
+architecture and remaining connections. The original hardware build instructions follow for compatibility. Both the
+shared browser and native runtime now use honesty-based quest answers.
 
 ---
 
@@ -70,14 +70,14 @@ photo-verification flow belongs to `app.py`, not the new shared browser game.
 
 A complete source package for your Raspberry Pi 3B+, Waveshare **2.8inch Capacitive Touch LCD (240×320)**, Camera Rev 1.3 and rotary controls. The interface renders at **320×240 landscape**. AI runs through your OpenAI API key named **Common Ground**, with `gpt-4.1-mini` configurable in `config.json`.
 
-**Status:** software logic tests and rendered screen inspection completed. The integrated FastAPI flow also passed live OpenAI recognition and quest verification using synthetic menu images and isolated test progress; see KOPI_SUNSET.md. Real-world photo accuracy, Pi GPIO, screen orientation/colours, touch, camera, audio and LED timing remain untested on your device. Your SSH connection is still unresolved. This is a build to install and test, not a claim that your hardware is already working.
+**Status:** software logic tests and rendered screen inspection completed. The integrated FastAPI flow also passed live OpenAI discovery recognition followed by self-reported quest completion using a synthetic menu and isolated test progress; see KOPI_SUNSET.md. Real-world photo accuracy, Pi GPIO, screen orientation/colours, touch, camera, audio and LED timing remain untested on your device. Your SSH connection is still unresolved. This is a build to install and test, not a claim that your hardware is already working.
 
 ### Included
 - Same pixel interface on the Pi and in a Mac browser preview.
 - Original animated Pocket Sprout, four home actions, XP, levels, scarf and sunhat unlocks.
 - Capture a still photo → review → explicitly send to OpenAI → evidence-based cultural match.
 - Ten curated cultural entries across Food, Language, Everyday life and Places.
-- Saved culture log; one active photo quest; AI-assisted verification.
+- Saved culture log; an honesty-based quest with an explicit completion answer.
 - 10 XP for each new category and 25 XP for each unique completed quest.
 - Unknown/uncertain result handling; no points for low/medium-confidence classification.
 - Local atomic progress saving, network/API errors, deliberate retries, no automatic paid retry loop.
@@ -85,7 +85,7 @@ A complete source package for your Raspberry Pi 3B+, Waveshare **2.8inch Capacit
 - Display, rotary/buttons, optional single-point touch, buzzer and WS2812 adapters.
 - Private API key entry, diagnostics, component tests and optional boot service.
 
-**MVP boundaries:** one creature, ten categories, still-photo review (not live viewfinder), English text, no audio speech, no accounts, no location tracking. Touch is supplementary: home/log selection and bottom-left Back; use the knob or preview controls for confirmation and paging. LED/buzzer are disabled until their electrical requirements are verified. A photo check is a demo interaction, not fraud-proof proof of a real-world action. Exact reused discovery photos are rejected, but crops/re-encoding can evade that check.
+**MVP boundaries:** one creature, ten categories, still-photo review (not live viewfinder), English text, no audio speech, no accounts, no location tracking. Touch is supplementary: home/log selection and bottom-left Back; use the knob or preview controls for confirmation and paging. LED/buzzer are disabled until their electrical requirements are verified. Quests need no photos, AI verification or location proof; completion is self-reported.
 
 ## A. Try the frontend on your Mac immediately
 
@@ -105,7 +105,7 @@ If Python is missing, install Python 3.11 or later from https://www.python.org/d
 
 3. Open **http://127.0.0.1:8765** in Safari/Chrome. Keep Terminal open.
 4. Arrow keys = turn knob; Enter = press knob; Escape = Back; S = Scan. Buttons also work.
-5. Select Explore & scan → Select to analyse → Select to accept quest → Select to take quest photo → Select to verify. Demo deliberately returns Chope and awards demo-only points. Its labelled sample picture is not analysed.
+5. Select Explore & scan → Select to analyse → Select to accept quest → Select to answer → choose Yes, I did it or Not yet. Demo deliberately returns Chope and awards demo-only points. Its labelled sample picture is not analysed.
 6. Ctrl+C in Terminal stops the app.
 
 To try a real image on the Mac (optional), run `python configure_key.py`, enter the secret at the hidden prompt, then `python app.py` without `--demo`. Choose a photo in the browser, review it, then Select to send it. macOS HEIC is not supported: export as JPEG first. The key stays on this computer; configure it separately on the Pi later. A browser page never receives the key.

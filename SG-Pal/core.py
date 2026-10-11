@@ -71,6 +71,24 @@ class Store:
         self.data['active'] = None; self.save(); return True
 
 
+    def finish_self_reported(self, cid):
+        if cid not in BY_ID or self.data['active'] != cid or cid in self.data['completed']:
+            return False
+        from copy import deepcopy
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        updated = deepcopy(self.data)
+        updated['completed'].append(cid)
+        updated['xp'] += 25
+        updated['active'] = None
+        updated.setdefault('quest_completions', {})[cid] = {
+            'method': 'self_reported',
+            'completed_sgt': datetime.now(ZoneInfo('Asia/Singapore')).isoformat(timespec='seconds')}
+        atomic_json(self.path, updated)
+        self.data = updated
+        return True
+
+
 def api_key():
     value = os.environ.get('OPENAI_API_KEY', '').strip()
     path = Path(os.environ.get('SGPAL_KEY_FILE', str(Path.home() / '.config/sgpal/credentials.json')))
@@ -96,6 +114,8 @@ def parse_response(response):
 
 def recognise(photo, quest=None, correction=None):
     """One bounded HTTPS request per deliberate confirmation; never auto retries."""
+    if quest is not None:
+        raise RuntimeError('Quest photo checks are retired. Complete quests with your own answer.')
     schema = {'type': 'object', 'additionalProperties': False,
               'properties': {'culture_id': {'type': 'string', 'enum': [*BY_ID, 'unknown']},
                              'confidence': {'type': 'string', 'enum': ['high', 'medium', 'low']},
@@ -107,11 +127,11 @@ def recognise(photo, quest=None, correction=None):
                     'high-confidence chope. Return unknown/low for ambiguous or irrelevant photos. '
                     'Observation: plain English, at most 24 words, evidence only. Confidence is your '
                     'self-assessment, not a calibrated probability. Never invent text you cannot read. '
-                    'For discovery set verified false. For a quest, verified true ONLY when the new '
-                    'photo clearly meets the supplied visible criterion, with high confidence. '
+                    'Set verified false: this request identifies a discovery, never quest completion. '
                     'Do not claim a photo proves actions, location, time, or ownership beyond what is visible.')
-    instructions += (' A user correction is a suggestion, not evidence. Independently assess it; do not agree unless visible evidence supports it. For quest verification culture_id must be the quest id only when its criterion is actually met, otherwise unknown.')
-    context = {'categories': CULTURE, 'quest_to_verify': quest, 'suggested_correction': correction}
+    instructions += (' A user correction is a suggestion, not evidence. Independently assess it; do not agree unless visible evidence supports it.')
+    context = {'categories': [{k: c[k] for k in ('id', 'title', 'fact')} for c in CULTURE],
+               'suggested_correction': {k: correction[k] for k in ('id', 'title', 'fact')} if correction else None}
     payload = {'model': CONFIG['model'], 'store': False, 'max_output_tokens': 500,
                'instructions': instructions,
                'input': [{'role': 'user', 'content': [

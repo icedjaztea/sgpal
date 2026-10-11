@@ -50,7 +50,10 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             page.goto(url);screen(page,'01');page.locator('#screen').focus()
             choose(page,'Start');choose(page,'otter');choose(page,'Choose');choose(page,'Keep');screen(page,'04')
             choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo')
-            page.locator('#screen').focus();choose(page,'Analyse');screen(page,'live-candidate')
+            page.route('**/api/scan',lambda route:route.fulfill(status=502,content_type='application/json',body='{"detail":"TEST: AI service unavailable. Retry."}'))
+            page.locator('#screen').focus();choose(page,'Analyse');screen(page,'live-request-error')
+            assert info(page)['saved']['xp']==0 and info(page)['saved']['coins']==0
+            page.unroute('**/api/scan');choose(page,'Retry');screen(page,'live-candidate')
             assert info(page)['saved']['xp']==0
             choose(page,'Correct');screen(page,'live-correction');choose(page,'Kaya toast');screen(page,'live-candidate')
             # Persist candidate across reload, then confirm. Simulate a committed
@@ -64,12 +67,14 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             choose(page,'Dex');screen(page,'live-story');choose(page,'Info');screen(page,'live-info')
             choose(page,'Photo');screen(page,'live-photo');page.screenshot(path=str(OUT/'game-photo.png'))
             choose(page,'Back');choose(page,'Quest');screen(page,'live-quest')
+            choose(page,'Answer');screen(page,'live-quest-answer')
+            page.screenshot(path=str(OUT/'quest-answer.png'))
             choose(page,'Not yet');screen(page,'live-quest')
             assert info(page)['saved']['xp']==10 and info(page)['saved']['coins']==5
             assert info(page)['saved']['completed']==[]
             # Failed delivery before commit: reload must retain the explicit answer for retry.
             page.route('**/api/quests/answer',lambda route:route.abort())
-            choose(page,'Done');screen(page,'live-request-error')
+            choose(page,'Answer');screen(page,'live-quest-answer');choose(page,'Yes, I did it');screen(page,'live-request-error')
             assert info(page)['saved']['coins']==5
             page.reload();screen(page,'live-request-error');page.locator('#screen').focus()
             page.unroute('**/api/quests/answer')
@@ -80,7 +85,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
             assert info(page)['saved']['xp']==35 and info(page)['saved']['coins']==15
             assert info(page)['saved']['quest_details']['kaya']['completion_method']=='self_reported'
             page.screenshot(path=str(OUT/'game-complete.png'))
-            choose(page,'Quest');screen(page,'live-quest');assert 'Done' not in info(page)['choices']
+            choose(page,'Quest');screen(page,'live-quest');assert 'Answer' not in info(page)['choices']
             # Reload reads committed reward and persisted photos.
             page.reload();screen(page,'04');assert info(page)['saved']['coins']==15
             page.locator('#screen').focus();choose(page,'Scan');page.locator('#photo').set_input_files(data/'orange.png');screen(page,'05photo');page.locator('#screen').focus();choose(page,'Analyse');screen(page,'live-candidate')

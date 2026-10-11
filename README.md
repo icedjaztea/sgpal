@@ -27,7 +27,7 @@ frontend code or Git. The model is configured in `SG-Pal/config.json`.
 Working: three-Pal adoption, suggested names, BTO, shared controls, persisted
 reload, real recognition/correction, confirmed CultureDex discoveries with saved
 photos and Singapore timestamps, separate XP/coins and exactly-once rewards.
-Quests now use the requested Done / Not yet choice, explicitly player-reported.
+Quests now use the requested “Yes, I did it” / “Not yet” choice, explicitly player-reported.
 The labelled design gallery is isolated from actual progress. Auth, friends and
 shop spending remain deferred. Raw SPI/GPIO/CSI integration with the new renderer
 and physical Pi/iPhone validation remain pending.

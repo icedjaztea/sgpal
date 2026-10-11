@@ -53,8 +53,9 @@ class GameStore:
 
     @contextmanager
     def connection(self):
-        self.directory.mkdir(parents=True, exist_ok=True)
+        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         db = sqlite3.connect(self.path, timeout=10)
+        self.path.chmod(0o600)
         db.row_factory = sqlite3.Row
         db.execute('PRAGMA foreign_keys=ON')
         try:

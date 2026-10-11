@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix='sgpal-browser-') as folder:
                     for ident in ids:
                         page.evaluate('(id)=>SGPal.preview(id)', ident)
                         assert inspect(page)['gallery'] is True
-                    assert page.evaluate('SGPal.audit()') == []
+                    assert page.evaluate('SGPal.audit()') == [], page.evaluate('SGPal.audit()')
                     page.evaluate("SGPal.preview('18')")
                     choose(page, 'SOUND: OFF')
                     for ident, label in [('03', 'Keep'), ('06check', 'Yes'), ('10pass', 'Done'), ('11confirm', 'Confirm'), ('13confirm', 'Save'), ('16request', 'Accept')]:

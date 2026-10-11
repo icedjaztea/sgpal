@@ -56,21 +56,21 @@ def test_complete_flow_photos_and_reload(game):
     assert record['timestamp_sgt'].endswith('+08:00')
     image=c.get(record['photo_url']);assert image.status_code==200
     assert image.content==normalise(base64.b64decode(request['image']))
-    evidence=body('blue',quest_id='kopi')
-    verified=c.post('/api/verify',json=evidence).json()
-    assert verified['status']=='verified' and verified['reward']=={'xp':25,'coins':10}
+    evidence=answer()
+    verified=c.post('/api/quests/answer',json=evidence).json()
+    assert verified['status']=='completed' and verified['reward']=={'xp':25,'coins':10}
     assert verified['state']['xp']==35 and verified['state']['coins']==15
     assert verified['state']['completed']==['kopi']
     quest=verified['state']['quest_details']['kopi']
     assert quest['completed_sgt'].endswith('+08:00')
-    assert c.get(quest['evidence_url']).content==normalise(base64.b64decode(evidence['image']))
+    assert quest['evidence_url'] is None and quest['completion_method']=='self_reported'
     assert GameStore(path).state()['xp']==35
-    assert c.get('/api/operations/'+evidence['operation_id']).json()['status']=='verified'
+    assert c.get('/api/operations/'+evidence['operation_id']).json()['status']=='completed'
     for _ in range(3):
-        assert c.post('/api/verify',json=evidence).json()['state']['xp']==35
+        assert c.post('/api/quests/answer',json=evidence).json()['state']['xp']==35
         assert c.post('/api/confirm',json={'operation_id':scan['operation_id']}).json()['state']['coins']==15
     assert discover(c,'green')['status']=='duplicate'
-    assert c.post('/api/verify',json=body('purple',quest_id='kopi')).json()['status']=='duplicate'
+    assert c.post('/api/quests/answer',json=answer()).json()['status']=='duplicate'
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
         assert db.execute('SELECT count(*) FROM rewards').fetchone()[0]==2
 
@@ -103,20 +103,12 @@ def test_catalogue_validation_and_correction_reassessed(game,monkeypatch):
     assert c.get('/api/state').json()['xp']==10
 
 
-@pytest.mark.parametrize('response', [result('kaya',verified=True),result('kopi','low',True),result('kopi',verified=False)])
-def test_quest_requires_correct_id_confidence_and_verification(game,monkeypatch,response):
+@pytest.mark.parametrize('cid', ['kopi', 'kaya', 'invented'])
+def test_quest_photo_route_retired_without_ai_or_rewards(game,monkeypatch,cid):
     c,_=game;discover(c)
-    monkeypatch.setattr(server,'recognise',lambda *args:response)
-    outcome=c.post('/api/verify',json=body('blue',quest_id='kopi')).json()
-    assert outcome['status']=='rejected'
-    assert outcome['state']['xp']==10 and outcome['state']['coins']==5
-
-
-def test_reused_photo_and_unassigned_quest_rejected(game):
-    c,_=game;discover(c)
-    assert c.post('/api/verify',json=body('orange',quest_id='kopi')).status_code==409
-    assert c.post('/api/verify',json=body('blue',quest_id='kaya')).status_code==409
-    assert c.post('/api/verify',json=body('blue',quest_id='made-up')).status_code==422
+    monkeypatch.setattr(server,'recognise',lambda *args:pytest.fail('No quest AI call'))
+    assert c.post('/api/verify',json=body('blue',quest_id=cid)).status_code==410
+    assert c.get('/api/state').json()['xp']==10
 
 
 def test_provider_failure_retry_and_id_conflict(game,monkeypatch):
@@ -148,15 +140,15 @@ def test_pending_request_does_not_make_second_provider_call(game,monkeypatch):
         assert first.result().json()['status']=='candidate'
 
 
-def test_concurrent_confirm_and_verification_award_once(game):
+def test_concurrent_confirm_and_answers_award_once(game):
     c,path=game
     ids=[c.post('/api/scan',json=body(color)).json()['operation_id'] for color in ['orange','green']]
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes=list(pool.map(lambda oid:c.post('/api/confirm',json={'operation_id':oid}).json(),ids))
     assert sorted(o['status'] for o in outcomes)==['confirmed','duplicate']
     with ThreadPoolExecutor(max_workers=2) as pool:
-        outcomes=list(pool.map(lambda color:c.post('/api/verify',json=body(color,quest_id='kopi')).json(),['blue','purple']))
-    assert sorted(o['status'] for o in outcomes)==['duplicate','verified']
+        outcomes=list(pool.map(lambda color:c.post('/api/quests/answer',json=answer()).json(),['blue','purple']))
+    assert sorted(o['status'] for o in outcomes)==['completed','duplicate']
     assert GameStore(path).state()['coins']==15
 
 
@@ -245,20 +237,13 @@ def test_missing_credential_still_allows_reconciling_committed_result(game,monke
     assert c.get('/api/operations/'+request['operation_id']).json()['state']['coins']==5
 
 
-def test_verification_commit_failure_is_retryable_without_partial_reward(game,monkeypatch):
-    c,path=game;discover(c);request=body('blue',quest_id='kopi')
-    original=GameStore.reward
-    def fail(db,event,xp,coins):
-        original(db,event,xp,coins)
-        raise sqlite3.OperationalError('simulated save failure')
-    monkeypatch.setattr(GameStore,'reward',staticmethod(fail))
-    assert c.post('/api/verify',json=request).status_code==503
-    state=c.get('/api/state').json()
-    assert state['xp']==10 and state['coins']==5 and not state['completed']
-    monkeypatch.setattr(GameStore,'reward',staticmethod(original))
-    with sqlite3.connect(path/'gameplay.sqlite3') as db:db.execute('UPDATE operations SET started=0 WHERE id=?',(request['operation_id'],))
-    assert c.post('/api/retry',json={'operation_id':request['operation_id']}).json()['state']['xp']==35
-    assert c.post('/api/retry',json={'operation_id':request['operation_id']}).json()['state']['coins']==15
+def test_old_pending_verification_cannot_restart_ai(game,monkeypatch):
+    c,path=game;discover(c);store=GameStore(path)
+    oid=str(uuid.uuid4())
+    store.begin(oid,'verify',normalise(base64.b64decode(photo('blue'))),'kopi')
+    monkeypatch.setattr(server,'recognise',lambda *args:pytest.fail('Retired verification must not call AI'))
+    assert c.post('/api/retry',json={'operation_id':oid}).status_code==410
+    assert c.post('/api/quests/answer',json=answer()).json()['state']['xp']==35
 
 
 def test_legacy_verifier_also_requires_matching_catalogue_id(tmp_path):
@@ -359,7 +344,9 @@ def test_quest_answer_rollback_then_retry(game,monkeypatch):
 
 def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
     c,path=game;discover(c)
-    c.post('/api/verify',json=body('blue',quest_id='kopi'))
+    store=GameStore(path);oid=str(uuid.uuid4())
+    _,lease=store.begin(oid,'verify',normalise(base64.b64decode(photo('blue'))),'kopi')
+    store.finish(oid,lease,result('kopi',verified=True))  # Historical schema-1 record, not a live route.
     before=c.get('/api/state').json()
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
         db.execute('DROP TABLE quest_answers')
@@ -371,3 +358,43 @@ def test_v1_save_migration_preserves_verified_rewards_and_photos(game):
     assert c.post('/api/quests/answer',json=answer()).json()['reward']=={'xp':0,'coins':0}
     with sqlite3.connect(path/'gameplay.sqlite3') as db:
         assert db.execute("SELECT value FROM meta WHERE key='version'").fetchone()[0]=='2'
+
+
+def test_discovery_photo_not_publicly_cached_or_embeddable(game):
+    import stat
+    c,path=game;found=discover(c)
+    response=c.get(found['state']['log']['kopi']['photo_url'])
+    assert response.headers['cache-control']=='private, no-store'
+    assert response.headers['cross-origin-resource-policy']=='same-origin'
+    assert response.headers['x-content-type-options']=='nosniff'
+    assert stat.S_IMODE((path/'gameplay.sqlite3').stat().st_mode)==0o600
+
+
+def test_correction_disagreement_is_not_confirmation(game,monkeypatch):
+    c,_=game;scan=c.post('/api/scan',json=body()).json()
+    monkeypatch.setattr(server,'recognise',lambda *args:result('kopi'))
+    corrected=c.post('/api/correct',json={'operation_id':str(uuid.uuid4()),'source_operation_id':scan['operation_id'],'culture_id':'tray'}).json()
+    assert corrected['status']=='uncertain'
+    assert c.post('/api/confirm',json={'operation_id':corrected['operation_id']}).status_code==409
+    assert c.get('/api/state').json()['coins']==0
+
+
+def test_catalogue_quests_never_require_proof():
+    from core import CULTURE, recognise
+    assert [item['id'] for item in CULTURE[:3]]==['chope','kopi','tray']
+    for item in CULTURE:
+        assert not any(word in item['quest'].lower() for word in ['photo','verify','location check','proof'])
+    with pytest.raises(RuntimeError,match='retired'):
+        recognise(b'unused',CULTURE[0])
+
+
+def test_native_answer_failure_preserves_memory_and_disk(tmp_path,monkeypatch):
+    import core
+    store=Store(tmp_path/'progress.json');store.discover('kopi','old');store.activate('kopi')
+    before=store.path.read_bytes()
+    assert not store.finish_self_reported(None)
+    def fail(*args):raise OSError('test storage failure')
+    monkeypatch.setattr(core,'atomic_json',fail)
+    with pytest.raises(OSError):store.finish_self_reported('kopi')
+    assert store.data['xp']==10 and store.data['completed']==[]
+    assert store.path.read_bytes()==before
