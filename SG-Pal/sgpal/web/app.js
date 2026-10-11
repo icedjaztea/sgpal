@@ -376,7 +376,9 @@ register('live-commerce-result','Decoration saved result',2,()=>{
  rail([['Items',()=>nav('12')],['Shop',()=>nav('11')],['Home',goHome]]);
 },{});
 
-liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS: PRIVATE SERVER.','SAME ACCOUNT, SAME SAVE.','NO FRIEND SHARING YET.'],16,46);rail([['Back',()=>nav('18')]])});
+liveView('16',()=>{base('FRIENDS');lines(['SAVED ROOMS, NOT LIVE.','EMAIL SIGN-IN REQUIRED.'],16,55);rail([['Open',()=>window.SGPalFriends.open()],['Back',()=>nav('04menu')]])});
+
+liveView('18pair',()=>{base('PHOTOS AND PRIVACY');lines(['ANALYSE SENDS TO OPENAI.','PHOTOS: PRIVATE SERVER.','SAME ACCOUNT, SAME SAVE.','FRIENDS: SAVED ROOM ONLY'],16,46);rail([['Back',()=>nav('18')]])});
 
 function render(){if(!ready)return;browserLines=[];browserBody=null;hits=[];ctx.imageSmoothingEnabled=false;screens[current].draw();if(focus>=hits.length){focus=0;hits=[];screens[current].draw()}if(!compact&&!gallery&&browserBody){hits=hits.filter(h=>!['Read','Next'].includes(h.label));focus=Math.min(focus,Math.max(0,hits.length-1))}document.getElementById('mode').textContent=gallery?'DESIGN PREVIEW · sample data · no save changes':(backend?'PLAY · saved on this server':'PLAY · saved in this browser');document.getElementById('accessible').textContent=screens[current].title+'. '+hits.map((h,i)=>(i===focus?'Selected: ':'')+h.label).join('. ');if(!compact&&!gallery)renderBrowser();}
 // Browser presentation consumes these same screen choices and state. It never
@@ -406,7 +408,7 @@ document.getElementById('photo').onchange=e=>{const f=e.target.files[0];e.target
 window.addEventListener('resize',resize);window.addEventListener('pagehide',stopCamera);document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream){stopCamera();current='05';focus=0;render()}});
 if(compact)document.body.classList.add('kiosk');else{document.body.classList.add('browser-game');document.getElementById('browser-shell').hidden=false;canvas.tabIndex=-1;}
 setInterval(()=>{if(ready&&stream&&current==='05live'&&!document.hidden)render()},100);
-window.SGPal={rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
+window.SGPal={paintVisit(target,visit){const old=ctx;try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.save();ctx.translate(0,-24);room(false,visit.room);sprite(visit.species,147,112,56);ctx.restore()}finally{ctx=old}},rotate,press,back,preview(id){document.body.classList.add('design-gallery');document.getElementById('review').open=true;if(!screens[id])throw Error('Unknown screen');gallery=true;nav(id)},live(){document.body.classList.remove('design-gallery');gallery=false;nav(saved.adopted?'04':'01')},manifest:()=>Object.values(screens).sort((a,b)=>(parseInt(a.id)||999)-(parseInt(b.id)||999)||a.id.localeCompare(b.id)).map(({draw,...s})=>({...s,main:mainIds.includes(s.id)})),audit:()=>audit,inspect:()=>({current,focus,choices:hits.map(h=>h.label),saved:{...saved},gallery,backend,ready}),native:()=>canvas.toDataURL('image/png')};
 async function loadSaved(){
  try{
   if(backend){await window.SGPalAccount.boot();saved=await api('state');pendingKey='sgpal-pending-operation-v2:'+saved.owner_id;catalogue=await api('catalogue');const shop=await api('shop');shopItems=shop.items;roomSlots=shop.slots}

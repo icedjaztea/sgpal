@@ -19,7 +19,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from filelock import FileLock, Timeout
-from sgpal import accounts
+from sgpal import accounts, friends
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -159,6 +159,7 @@ async def private_sessions(request: Request, call_next):
 
 
 app.include_router(accounts.router(lambda:DATA))
+app.include_router(friends.router(lambda:DATA, SavedProfile))
 
 
 @app.get("/api/status")
