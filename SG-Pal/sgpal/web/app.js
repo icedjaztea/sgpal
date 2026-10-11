@@ -40,7 +40,8 @@ function button(label,x,y,w,h,fn,{disabled=false}={}){const i=hits.length,sel=i=
 function rail(options){const gap=4,w=Math.floor((304-gap*(options.length-1))/options.length);options.forEach((o,i)=>button(o[0],8+i*(w+gap),194,w,28,o[1]));}
 function row(label,y,fn,sub){button(label,12,y,296,30,fn);if(sub)text(sub,18,y+33,C.wood)}
 function sprite(species,x,y,size=64){const a=assets[species];if(a){const r=Math.min(size/a.width,size/a.height);const w=Math.round(a.width*r),h=Math.round(a.height*r);ctx.drawImage(a,x+Math.floor((size-w)/2),y+Math.floor((size-h)/2),w,h)}}
-function room(pal=true,arrangement=gallery?{}:saved.room){ctx.drawImage(assets.room,0,24,320,168);for(const [slotId,itemId] of Object.entries(arrangement||{})){const slot=roomSlots.find(s=>s.id===slotId),item=shopItems.find(i=>i.id===itemId);if(slot&&item)decoration(item.art,slot.x,slot.y)}if(pal)sprite(state().species,147,112,56)}
+function room(pal=true,arrangement=gallery?{}:saved.room){ctx.drawImage(assets.room,0,24,320,168);roomContents(pal,arrangement)}
+function roomContents(pal,arrangement){for(const [slotId,itemId] of Object.entries(arrangement||{})){const slot=roomSlots.find(s=>s.id===slotId),item=shopItems.find(i=>i.id===itemId);if(slot&&item)decoration(item.art,slot.x,slot.y)}if(pal)sprite(state().species,147,112,56)}
 // Plant reuses approved primitive art. Cup/tile are simple palette-matched placeholders.
 function decoration(art,x,y){
  if(art==='plant'){symbol('plant',x,y);return}
@@ -386,10 +387,12 @@ function render(){if(!ready)return;browserLines=[];browserBody=null;hits=[];ctx.
 // calculates rewards, writes saves, or implements a second gameplay flow.
 function renderBrowser(){
  const target=document.getElementById('room-art'),original=ctx;
- try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,320,168);ctx.save();ctx.translate(0,-24);
+ // Keep original artwork detail: never upscale the handheld framebuffer.
+ if(target.width!==assets.room.width||target.height!==assets.room.height){target.width=assets.room.width;target.height=assets.room.height}
+ try{ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,target.width,target.height);ctx.drawImage(assets.room,0,0);ctx.save();ctx.scale(target.width/320,target.width/320);ctx.translate(0,-24);
   let arrangement=saved.room;
   if(current==='live-placement'&&selectedDecor){const slots=roomSlots.filter(s=>selectedDecor.slots.includes(s.id)),slot=slots[slotIndex%slots.length];arrangement={...saved.room};for(const id of Object.keys(arrangement))if(arrangement[id]===selectedDecor.id)delete arrangement[id];if(slot)arrangement[slot.id]=selectedDecor.id}
-  if(visiting){room(false,visiting.room);sprite(visiting.species,147,112,56)}else room(saved.adopted,arrangement);ctx.restore();
+  if(visiting){roomContents(false,visiting.room);sprite(visiting.species,147,112,56)}else roomContents(saved.adopted,arrangement);ctx.restore();
  }finally{ctx=original}
  window.SGPalBrowser.render({screen:current,title:screens[current].title,lines:browserLines,body:browserBody,choices:hits.map(({label,disabled})=>({label,disabled})),focus,saved,visiting,candidate,name:names[candidate][nameIndex],item:selectedDecor||shopItems[shopIndex%shopItems.length],shopItem:shopItems[shopIndex%shopItems.length],entry:selectedEntry,result:gameResult,photo:current==='live-photo'?storedPhoto:photo,stream,backend,busy:gameBusy||saving}, {
   activate(i){focus=i;press()},select(i){focus=i;render()},

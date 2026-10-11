@@ -55,7 +55,8 @@ with tempfile.TemporaryDirectory(prefix='sgpal-game-test-') as temp:
                 page.screenshot(path=str(OUT/file))
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth && document.documentElement.scrollHeight<=innerHeight')
                 assert not page.locator('#game-panel').is_visible()
-                bounds=page.locator('#room-art').bounding_box();assert abs(bounds['width']/bounds['height']-320/168)<.01
+                bounds=page.locator('#room-art').bounding_box();assert abs(bounds['width']/bounds['height']-1729/910)<.01
+            assert p.locator('#room-art').evaluate('(c)=>[c.width,c.height]')==[1729,910]
             q.locator('#game-nav [data-destination="11"]').click();screen(q,'11')
             q.screenshot(path=str(OUT/'immersive-phone-window.png'));q.locator('#panel-close').click();screen(q,'04')
             # Real recovery accounts with isolated temporary saves.
