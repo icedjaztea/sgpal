@@ -5,7 +5,7 @@
 <body><main id="compact-shell">
 <header class="surround"><p class="eyebrow">SG PAL / KOPI SUNSET</p><h1>A little home.<br>A whole neighbourhood.</h1><p>Your Singapore companion · 320 × 240</p></header>
 <section class="device" aria-label="SG Pal handheld screen"><canvas width="320" height="240" id="screen" tabindex="0" aria-label="SG Pal screen"></canvas></section>
-<p id="mode" class="surround" role="status"></p>
+<p id="mode" class="surround" role="status">Connecting to SG Pal…</p>
 <nav class="controls surround" aria-label="Rotary control simulator"><button id="left" aria-label="Rotate counterclockwise">↶ Turn</button><button id="press">Press</button><button id="right" aria-label="Rotate clockwise">Turn ↷</button></nav>
 <div id="accessible" class="sr-only" aria-live="polite"></div>
 <details class="surround" id="review"><summary>Review all screen designs</summary><p>Design previews use sample data. They never change your saved game.</p><label for="scene">Screen</label><select id="scene"></select><button id="live">Return to my Pal</button></details>
@@ -30,7 +30,7 @@
     <section id="game-panel" class="game-panel" aria-labelledby="panel-title" tabindex="-1">
       <div class="panel-top"><span id="panel-kicker" class="eyebrow">WELCOME, NEIGHBOUR</span><button id="panel-close" aria-label="Close panel" hidden>Close</button></div>
       <h2 id="panel-title">Hello, Singapore.</h2>
-      <div id="panel-media"></div><div id="panel-copy"></div>
+      <div id="panel-media"></div><div id="panel-copy" role="status">Connecting to SG Pal…</div>
       <div id="game-actions" aria-label="Screen actions"></div>
     </section>
   </main>
@@ -55,4 +55,55 @@
 <p>Visit saved rooms, not live multiplayer. Only accepted friends can visit.</p>
 <p id="friends-message" role="status"></p><div id="friends-content"></div>
 </dialog>
-<script src="friends.js"></script><script src="accounts.js"></script><script src="browser.js"></script><script src="app.js"></script></body></html>
+<script>
+// Keep the loader in the page so a temporary 502 for a script can recover.
+(() => {
+  const compact = new URLSearchParams(location.search).get('kiosk') === '1';
+  if (!compact) {
+    document.body.classList.add('browser-game');
+    document.getElementById('browser-shell').hidden = false;
+  }
+  function message(text) {
+    document.getElementById('mode').textContent = text;
+    document.getElementById('panel-copy').textContent = text;
+  }
+  async function retry(work) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await work(); }
+      catch (error) {
+        if (attempt === 3 || (error.status >= 400 && error.status < 500)) throw error;
+        message('Reconnecting to SG Pal… Your saved progress is unchanged.');
+        await new Promise(resolve => setTimeout(resolve, 1000 * 2 ** attempt));
+      }
+    }
+  }
+  function failed() {
+    const text = 'SG Pal could not connect. Retry when the service is available. Your saved progress is unchanged.';
+    message(text);
+    document.getElementById('panel-title').textContent = 'Connection interrupted';
+    const button = document.createElement('button');
+    button.textContent = 'Retry loading';
+    button.onclick = () => location.reload();
+    document.getElementById('game-actions').replaceChildren(button);
+    if (compact) {
+      document.getElementById('mode').classList.remove('surround');
+      document.getElementById('mode').style.cssText = 'position:fixed;inset:0;z-index:10;margin:0;padding:12px;overflow:auto;background:#f7e8ca;color:#29334a';
+      const retryButton = button.cloneNode(true);
+      retryButton.onclick = button.onclick;
+      document.getElementById('mode').append(' ', retryButton);
+    }
+  }
+  window.SGPalStartup = {retry, message, failed};
+  (async () => {
+    for (const source of ['friends.js', 'accounts.js', 'browser.js', 'app.js']) {
+      await retry(() => new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = source;
+        script.onload = resolve;
+        script.onerror = () => { script.remove(); reject(Error('Script unavailable')); };
+        document.body.append(script);
+      }));
+    }
+  })().catch(failed);
+})();
+</script></body></html>

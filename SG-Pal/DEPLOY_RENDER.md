@@ -38,3 +38,5 @@ Failed restores are persisted and limited to 5 per session and 60 per connecting
 ```
 
 The browser check starts a real server with temporary saves, uses real recovery credentials, and restarts the process to verify persistence. It does not call OpenAI or email providers. The privacy test injects AI results only to create a private discovery photo. Public deployment verification requires an actual Render URL; local passing tests are not proof of deployment.
+
+Browser startup retries failed scripts, artwork and initial save reads up to four times with bounded backoff. This lets a page opened during a brief deploy recover automatically. If the service stays unavailable, a Retry loading action remains available, including at 320 × 240. Startup retries never submit gameplay writes. Run `.venv/bin/python scripts/test_startup_browser.py` to check injected 502 failures, save preservation and manual recovery in desktop and compact mode.
